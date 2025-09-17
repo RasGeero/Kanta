@@ -1,0 +1,61 @@
+You are an autonomous senior full-stack engineer building a production-ready web application.  
+Your task: Design, build, test, and refine a **Kantamanto Thrift Marketplace Webapp** for buyers and sellers of second-hand clothing in Ghana, with AI-powered mannequin overlay integration.  
+
+## Core Requirements:
+1. **Tech Stack**
+   - Payments: Paystack + Mobile Money (Ghana)
+   - AI Integration: Placeholder API routes for Remove.bg & Fashn.ai (Virtual Try-On)
+
+2. **User Roles**
+   - **Buyer**
+     - Signup/login
+     - Browse/search/filter clothing listings
+     - View item detail (with AI mannequin try-on image)
+     - Chat with seller
+     - Purchase via Paystack/MoMo
+   - **Seller**
+     - Signup/login
+     - Create/manage listings (upload clothing photo)
+     - Image auto-processed → background removed + mannequin overlay via AI API
+     - Track orders & sales
+   - **Admin**
+     - Separate login
+     - Manage users, sellers, listings, payments, reports
+
+3. **Features**
+   - Modern, responsive UI
+   - Search & filters: size, color, gender, category, price
+   - Seller dashboard with analytics (views, sales)
+   - Profile settings (buyer & seller)
+   - Notifications (new messages, new orders)
+   - Admin dashboard for moderation
+   - Integration-ready backend endpoints for AI image processing
+
+4. **AI Mannequin / Try-On Flow**
+   - When seller uploads item photo:
+     - Remove background (Remove.bg API placeholder)
+     - Overlay garment on mannequin template or send to Fashn.ai API
+     - Save processed image → display as product photo
+   - Code must include API call placeholders + dummy key storage (use `.env` for secrets)
+
+5. **Automation Instructions**
+   - Work **autonomously**: build, test, debug, and refine without asking for user input.
+   - Continuously run code, resolve errors, and polish until app is functional.
+   - Ensure clean modular code and comments for future devs.
+   - Generate seed data (sample buyers, sellers, and items) for demo purposes.
+   - Write automated tests (unit + integration).
+   - Polish UI for usability and mobile responsiveness.
+
+6. **Output**
+   - A fully working webapp hosted on Replit
+   - Document setup instructions in `README.md`
+   - Provide dummy `.env.example` file with placeholders for Firebase, Paystack, and AI APIs
+   - Final app must be clean, tested, and ready for demo
+
+## Extra Notes
+- Prioritize **speed of build** but ensure clean architecture (separate frontend/backend).
+- Use sensible defaults for Ghana context (currency: GHS, mobile money support).
+- Optimize UX for low-data usage since many Ghanaian users have limited internet.
+- After core app works, refine UI with Tailwind components for professional polish.
+
+Now, begin development autonomously. Do not ask the user for further clarification — instead, make the best technical decisions to deliver a polished, working app.
