@@ -8,7 +8,8 @@ import {
   insertMessageSchema,
   insertReviewSchema,
   insertWishlistSchema,
-  insertReportSchema 
+  insertReportSchema,
+  insertCartItemSchema
 } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
@@ -508,23 +509,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Wishlist routes
-  app.post("/api/wishlist", async (req, res) => {
+  app.post("/api/wishlist", requireAuth, async (req, res) => {
     try {
-      const wishlistData = insertWishlistSchema.parse(req.body);
-      const wishlist = await storage.addToWishlist(wishlistData);
+      const { productId } = req.body;
+      if (!productId) {
+        return res.status(400).json({ message: "Product ID is required" });
+      }
+
+      const wishlistData = {
+        userId: req.session.userId!,
+        productId
+      };
+
+      const result = insertWishlistSchema.safeParse(wishlistData);
+      if (!result.success) {
+        return res.status(400).json({ message: "Invalid wishlist data", errors: result.error.errors });
+      }
+
+      const wishlist = await storage.addToWishlist(result.data);
       res.status(201).json(wishlist);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
-      }
       res.status(500).json({ message: "Internal server error" });
     }
   });
 
-  app.delete("/api/wishlist/:userId/:productId", async (req, res) => {
+  app.delete("/api/wishlist/:productId", requireAuth, async (req, res) => {
     try {
-      const { userId, productId } = req.params;
-      const success = await storage.removeFromWishlist(userId, productId);
+      const { productId } = req.params;
+      const success = await storage.removeFromWishlist(req.session.userId!, productId);
       
       if (!success) {
         return res.status(404).json({ message: "Wishlist item not found" });
@@ -536,20 +548,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/users/:userId/wishlist", async (req, res) => {
+  app.get("/api/wishlist", requireAuth, async (req, res) => {
     try {
-      const wishlist = await storage.getUserWishlist(req.params.userId);
+      const wishlist = await storage.getUserWishlist(req.session.userId!);
       res.json(wishlist);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
   });
 
-  app.get("/api/wishlist/:userId/:productId/exists", async (req, res) => {
+  app.get("/api/wishlist/:productId/exists", requireAuth, async (req, res) => {
     try {
-      const { userId, productId } = req.params;
-      const exists = await storage.isInWishlist(userId, productId);
+      const { productId } = req.params;
+      const exists = await storage.isInWishlist(req.session.userId!, productId);
       res.json({ exists });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Cart routes
+  app.post("/api/cart", requireAuth, async (req, res) => {
+    try {
+      const { productId, quantity = 1, size } = req.body;
+      if (!productId) {
+        return res.status(400).json({ message: "Product ID is required" });
+      }
+
+      // Validate product exists and is active
+      const product = await storage.getProduct(productId);
+      if (!product || !product.isActive || !product.isApproved) {
+        return res.status(404).json({ message: "Product not found or unavailable" });
+      }
+
+      // Validate quantity
+      if (quantity < 1 || quantity > 10) {
+        return res.status(400).json({ message: "Quantity must be between 1 and 10" });
+      }
+
+      const cartItemData = {
+        userId: req.session.userId!,
+        productId,
+        quantity,
+        size
+      };
+
+      const result = insertCartItemSchema.safeParse(cartItemData);
+      if (!result.success) {
+        return res.status(400).json({ message: "Invalid cart item data", errors: result.error.errors });
+      }
+
+      const cartItem = await storage.addToCart(result.data);
+      res.status(201).json(cartItem);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.put("/api/cart/:productId", requireAuth, async (req, res) => {
+    try {
+      const { productId } = req.params;
+      const { quantity, size } = req.body;
+
+      if (!size) {
+        return res.status(400).json({ message: "Size is required for cart updates" });
+      }
+
+      if (quantity !== undefined && (quantity < 1 || quantity > 10)) {
+        return res.status(400).json({ message: "Quantity must be between 1 and 10" });
+      }
+
+      const updatedItem = await storage.updateCartItem(req.session.userId!, productId, size, { quantity });
+      
+      if (!updatedItem) {
+        return res.status(404).json({ message: "Cart item not found for the specified product and size" });
+      }
+
+      res.json(updatedItem);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/cart/:productId", requireAuth, async (req, res) => {
+    try {
+      const { productId } = req.params;
+      const { size } = req.query;
+      
+      if (!size) {
+        return res.status(400).json({ message: "Size is required for cart removal" });
+      }
+      
+      const success = await storage.removeFromCart(req.session.userId!, productId, size as string);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Cart item not found for the specified product and size" });
+      }
+
+      res.json({ message: "Item removed from cart" });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/cart", requireAuth, async (req, res) => {
+    try {
+      const cart = await storage.getCart(req.session.userId!);
+      res.json(cart);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/cart", requireAuth, async (req, res) => {
+    try {
+      await storage.clearCart(req.session.userId!);
+      res.json({ message: "Cart cleared" });
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }

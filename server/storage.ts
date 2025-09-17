@@ -14,8 +14,15 @@ import {
   type Wishlist,
   type InsertWishlist,
   type Report,
-  type InsertReport
+  type InsertReport,
+  type CartItem,
+  type InsertCartItem
 } from "@shared/schema";
+
+// Extended cart types for storage
+export type CartItemWithProduct = CartItem & {
+  product: ProductWithSeller;
+};
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -76,6 +83,13 @@ export interface IStorage {
   getUserWishlist(userId: string): Promise<ProductWithSeller[]>;
   isInWishlist(userId: string, productId: string): Promise<boolean>;
   
+  // Cart operations
+  addToCart(cartItem: InsertCartItem): Promise<CartItem>;
+  updateCartItem(userId: string, productId: string, size: string, updates: { quantity?: number }): Promise<CartItem | undefined>;
+  removeFromCart(userId: string, productId: string, size: string): Promise<boolean>;
+  clearCart(userId: string): Promise<boolean>;
+  getCart(userId: string): Promise<CartItemWithProduct[]>;
+
   // Report operations
   createReport(report: InsertReport): Promise<Report>;
   getReports(status?: string): Promise<Report[]>;
@@ -90,6 +104,7 @@ export class MemStorage implements IStorage {
   private reviews: Map<string, Review> = new Map();
   private wishlist: Map<string, Wishlist> = new Map();
   private reports: Map<string, Report> = new Map();
+  private cartItems: Map<string, CartItem> = new Map();
 
   constructor() {
     this.initializeSeedData();
@@ -736,6 +751,98 @@ export class MemStorage implements IStorage {
   async isInWishlist(userId: string, productId: string): Promise<boolean> {
     return Array.from(this.wishlist.values())
       .some(w => w.userId === userId && w.productId === productId);
+  }
+
+  // Cart operations implementation
+  async addToCart(insertCartItem: InsertCartItem): Promise<CartItem> {
+    const existingItem = Array.from(this.cartItems.values())
+      .find(item => item.userId === insertCartItem.userId && 
+                   item.productId === insertCartItem.productId && 
+                   item.size === insertCartItem.size);
+
+    if (existingItem) {
+      // Update existing item quantity with cumulative limit enforcement
+      const newQuantity = existingItem.quantity + (insertCartItem.quantity || 1);
+      existingItem.quantity = Math.min(10, newQuantity); // Enforce max 10 per item
+      this.cartItems.set(existingItem.id, existingItem);
+      return existingItem;
+    } else {
+      // Create new cart item with quantity validation
+      const id = randomUUID();
+      const cartItem: CartItem = {
+        ...insertCartItem,
+        id,
+        createdAt: new Date(),
+        quantity: Math.max(1, Math.min(10, insertCartItem.quantity || 1))
+      };
+      this.cartItems.set(id, cartItem);
+      return cartItem;
+    }
+  }
+
+  async updateCartItem(userId: string, productId: string, size: string, updates: { quantity?: number }): Promise<CartItem | undefined> {
+    const cartItem = Array.from(this.cartItems.values())
+      .find(item => item.userId === userId && item.productId === productId && item.size === size);
+    
+    if (!cartItem) return undefined;
+    
+    if (updates.quantity !== undefined) {
+      // Enforce quantity limits
+      cartItem.quantity = Math.max(1, Math.min(10, updates.quantity));
+    }
+    
+    this.cartItems.set(cartItem.id, cartItem);
+    return cartItem;
+  }
+
+  async removeFromCart(userId: string, productId: string, size: string): Promise<boolean> {
+    const cartItem = Array.from(this.cartItems.values())
+      .find(item => item.userId === userId && 
+                   item.productId === productId && 
+                   item.size === size);
+    
+    if (!cartItem) return false;
+    
+    return this.cartItems.delete(cartItem.id);
+  }
+
+  async clearCart(userId: string): Promise<boolean> {
+    const userCartItems = Array.from(this.cartItems.entries())
+      .filter(([_, item]) => item.userId === userId);
+    
+    userCartItems.forEach(([id]) => this.cartItems.delete(id));
+    return true;
+  }
+
+  async getCart(userId: string): Promise<CartItemWithProduct[]> {
+    const userCartItems = Array.from(this.cartItems.values())
+      .filter(item => item.userId === userId);
+    
+    const cartItemsWithProducts: CartItemWithProduct[] = [];
+    for (const item of userCartItems) {
+      const product = this.products.get(item.productId);
+      if (product && product.isActive && product.isApproved) {
+        const seller = this.users.get(product.sellerId);
+        if (seller) {
+          const reviews = Array.from(this.reviews.values()).filter(r => r.reviewedId === product.sellerId);
+          const averageRating = reviews.length > 0 ? 
+            reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length : 0;
+          const reviewCount = reviews.length;
+
+          cartItemsWithProducts.push({
+            ...item,
+            product: {
+              ...product,
+              seller,
+              averageRating: Math.round(averageRating * 10) / 10,
+              reviewCount
+            }
+          });
+        }
+      }
+    }
+
+    return cartItemsWithProducts;
   }
 
   // Report operations

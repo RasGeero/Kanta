@@ -11,18 +11,25 @@ import type {
   Review,
   InsertReview,
   InsertWishlist,
-  InsertReport
+  InsertReport,
+  CartItem,
+  InsertCartItem
 } from "@shared/schema";
+
+// Extended cart types
+export type CartItemWithProduct = CartItem & {
+  product: ProductWithSeller;
+};
 
 // User API
 export const userApi = {
   register: async (userData: InsertUser): Promise<User> => {
-    const response = await apiRequest('POST', '/api/users/register', userData);
+    const response = await apiRequest('POST', '/api/auth/register', userData);
     return response.json();
   },
 
   login: async (email: string, password: string): Promise<User> => {
-    const response = await apiRequest('POST', '/api/users/login', { email, password });
+    const response = await apiRequest('POST', '/api/auth/login', { email, password });
     return response.json();
   },
 
@@ -186,23 +193,47 @@ export const reviewApi = {
 
 // Wishlist API
 export const wishlistApi = {
-  addToWishlist: async (userId: string, productId: string): Promise<void> => {
-    await apiRequest('POST', '/api/wishlist', { userId, productId });
+  addToWishlist: async (productId: string): Promise<void> => {
+    await apiRequest('POST', '/api/wishlist', { productId });
   },
 
-  removeFromWishlist: async (userId: string, productId: string): Promise<void> => {
-    await apiRequest('DELETE', `/api/wishlist/${userId}/${productId}`);
+  removeFromWishlist: async (productId: string): Promise<void> => {
+    await apiRequest('DELETE', `/api/wishlist/${productId}`);
   },
 
-  getUserWishlist: async (userId: string): Promise<ProductWithSeller[]> => {
-    const response = await apiRequest('GET', `/api/users/${userId}/wishlist`);
+  getUserWishlist: async (): Promise<ProductWithSeller[]> => {
+    const response = await apiRequest('GET', '/api/wishlist');
     return response.json();
   },
 
-  isInWishlist: async (userId: string, productId: string): Promise<boolean> => {
-    const response = await apiRequest('GET', `/api/wishlist/${userId}/${productId}/exists`);
+  isInWishlist: async (productId: string): Promise<boolean> => {
+    const response = await apiRequest('GET', `/api/wishlist/${productId}/exists`);
     const data = await response.json();
     return data.exists;
+  },
+};
+
+// Cart API (for localStorage-to-backend transition)
+export const cartApi = {
+  addToCart: async (productId: string, quantity: number = 1, size?: string): Promise<void> => {
+    await apiRequest('POST', '/api/cart', { productId, quantity, size });
+  },
+
+  removeFromCart: async (productId: string, size: string): Promise<void> => {
+    await apiRequest('DELETE', `/api/cart/${productId}?size=${encodeURIComponent(size)}`);
+  },
+
+  updateCartQuantity: async (productId: string, quantity: number, size: string): Promise<void> => {
+    await apiRequest('PUT', `/api/cart/${productId}`, { quantity, size });
+  },
+
+  getUserCart: async (): Promise<CartItemWithProduct[]> => {
+    const response = await apiRequest('GET', '/api/cart');
+    return response.json();
+  },
+
+  clearCart: async (): Promise<void> => {
+    await apiRequest('DELETE', '/api/cart');
   },
 };
 

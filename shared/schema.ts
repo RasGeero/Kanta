@@ -96,6 +96,15 @@ export const reports = pgTable("reports", {
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
+export const cartItems = pgTable("cart_items", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  productId: varchar("product_id").notNull().references(() => products.id),
+  quantity: integer("quantity").notNull().default(1),
+  size: text("size"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertProductSchema = createInsertSchema(products).omit({ 
@@ -114,6 +123,7 @@ export const insertMessageSchema = createInsertSchema(messages).omit({ id: true,
 export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, createdAt: true });
 export const insertWishlistSchema = createInsertSchema(wishlist).omit({ id: true, createdAt: true });
 export const insertReportSchema = createInsertSchema(reports).omit({ id: true, createdAt: true });
+export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true, createdAt: true });
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -130,6 +140,8 @@ export type Wishlist = typeof wishlist.$inferSelect;
 export type InsertWishlist = z.infer<typeof insertWishlistSchema>;
 export type Report = typeof reports.$inferSelect;
 export type InsertReport = z.infer<typeof insertReportSchema>;
+export type CartItem = typeof cartItems.$inferSelect;
+export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
 
 // Extended types with relations
 export type ProductWithSeller = Product & {
