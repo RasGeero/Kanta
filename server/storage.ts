@@ -301,9 +301,11 @@ export class MemStorage implements IStorage {
     const user: User = { 
       ...insertUser, 
       id, 
+      phone: insertUser.phone ?? null,
+      role: insertUser.role ?? 'buyer',
       createdAt: new Date(),
-      isActive: true,
-      profileImage: null 
+      isActive: insertUser.isActive ?? true,
+      profileImage: insertUser.profileImage ?? null 
     };
     this.users.set(id, user);
     return user;
@@ -352,10 +354,16 @@ export class MemStorage implements IStorage {
     const product: Product = {
       ...insertProduct,
       id,
-      isActive: true,
+      description: insertProduct.description ?? null,
+      size: insertProduct.size ?? null,
+      color: insertProduct.color ?? null,
+      gender: insertProduct.gender ?? null,
+      originalImage: insertProduct.originalImage ?? null,
+      processedImage: insertProduct.processedImage ?? null,
+      isActive: insertProduct.isActive ?? true,
       isApproved: false,
       views: 0,
-      images: insertProduct.images || [],
+      images: (insertProduct.images as string[]) || [],
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -413,7 +421,7 @@ export class MemStorage implements IStorage {
     }
 
     if (query.color) {
-      products = products.filter(p => p.color?.toLowerCase().includes(query.color.toLowerCase()));
+      products = products.filter(p => p.color?.toLowerCase().includes(query.color!.toLowerCase()));
     }
 
     if (query.gender && query.gender !== 'all') {
@@ -458,7 +466,7 @@ export class MemStorage implements IStorage {
   async getFeaturedProducts(limit: number = 8): Promise<ProductWithSeller[]> {
     const products = Array.from(this.products.values())
       .filter(p => p.isActive && p.isApproved)
-      .sort((a, b) => b.views - a.views)
+      .sort((a, b) => (b.views ?? 0) - (a.views ?? 0))
       .slice(0, limit);
 
     const productsWithSeller: ProductWithSeller[] = [];
@@ -509,7 +517,7 @@ export class MemStorage implements IStorage {
   async incrementProductViews(id: string): Promise<void> {
     const product = this.products.get(id);
     if (product) {
-      product.views += 1;
+      product.views = (product.views ?? 0) + 1;
       this.products.set(id, product);
     }
   }
@@ -537,6 +545,11 @@ export class MemStorage implements IStorage {
     const order: Order = {
       ...insertOrder,
       id,
+      quantity: insertOrder.quantity ?? 1,
+      status: insertOrder.status ?? 'pending',
+      deliveryFee: insertOrder.deliveryFee ?? '0',
+      paymentMethod: insertOrder.paymentMethod ?? null,
+      paymentReference: insertOrder.paymentReference ?? null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -567,7 +580,7 @@ export class MemStorage implements IStorage {
       }
     }
 
-    return ordersWithDetails.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return ordersWithDetails.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
   }
 
   async getOrdersBySeller(sellerId: string): Promise<OrderWithDetails[]> {
@@ -584,7 +597,7 @@ export class MemStorage implements IStorage {
       }
     }
 
-    return ordersWithDetails.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return ordersWithDetails.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
   }
 
   async getAllOrders(): Promise<OrderWithDetails[]> {
@@ -601,7 +614,7 @@ export class MemStorage implements IStorage {
       }
     }
 
-    return ordersWithDetails.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return ordersWithDetails.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
   }
 
   // Message operations
@@ -610,6 +623,8 @@ export class MemStorage implements IStorage {
     const message: Message = {
       ...insertMessage,
       id,
+      productId: insertMessage.productId ?? null,
+      isRead: insertMessage.isRead ?? false,
       createdAt: new Date(),
     };
     this.messages.set(id, message);
@@ -623,7 +638,7 @@ export class MemStorage implements IStorage {
          (m.senderId === user2Id && m.receiverId === user1Id)) &&
         (!productId || m.productId === productId)
       )
-      .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      .sort((a, b) => (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0));
 
     return messages;
   }
@@ -648,6 +663,7 @@ export class MemStorage implements IStorage {
     const review: Review = {
       ...insertReview,
       id,
+      comment: insertReview.comment ?? null,
       createdAt: new Date(),
     };
     this.reviews.set(id, review);
@@ -657,7 +673,7 @@ export class MemStorage implements IStorage {
   async getReviewsBySeller(sellerId: string): Promise<Review[]> {
     return Array.from(this.reviews.values())
       .filter(r => r.reviewedId === sellerId)
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      .sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
   }
 
   async getSellerAverageRating(sellerId: string): Promise<number> {
@@ -728,6 +744,9 @@ export class MemStorage implements IStorage {
     const report: Report = {
       ...insertReport,
       id,
+      status: insertReport.status ?? 'open',
+      reportedUserId: insertReport.reportedUserId ?? null,
+      reportedProductId: insertReport.reportedProductId ?? null,
       createdAt: new Date(),
     };
     this.reports.set(id, report);
@@ -741,7 +760,7 @@ export class MemStorage implements IStorage {
       reports = reports.filter(r => r.status === status);
     }
     
-    return reports.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    return reports.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
   }
 
   async updateReportStatus(id: string, status: string): Promise<boolean> {

@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { 
@@ -15,6 +15,7 @@ import multer from "multer";
 import sharp from "sharp";
 import fs from "fs/promises";
 import path from "path";
+import bcrypt from "bcryptjs";
 
 // Configure multer for file uploads
 const upload = multer({ 
@@ -29,10 +30,30 @@ const upload = multer({
   }
 });
 
+// Authentication middleware
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.userId) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
+  next();
+}
+
+function requireRole(role: string) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.session.userId) {
+      return res.status(401).json({ message: "Authentication required" });
+    }
+    if (req.session.userRole !== role && req.session.userRole !== 'admin') {
+      return res.status(403).json({ message: "Insufficient permissions" });
+    }
+    next();
+  };
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   
-  // User routes
-  app.post("/api/users/register", async (req, res) => {
+  // Authentication routes
+  app.post("/api/auth/register", async (req, res) => {
     try {
       const userData = insertUserSchema.parse(req.body);
       
@@ -42,10 +63,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User already exists with this email" });
       }
 
-      // TODO: Hash password in production
-      const user = await storage.createUser(userData);
-      const { password, ...userWithoutPassword } = user;
+      // Check if username is taken
+      const existingUsername = await storage.getUserByUsername(userData.username);
+      if (existingUsername) {
+        return res.status(400).json({ message: "Username is already taken" });
+      }
+
+      // Hash password
+      const saltRounds = 12;
+      const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
       
+      const user = await storage.createUser({
+        ...userData,
+        password: hashedPassword
+      });
+      
+      // Create session
+      req.session.userId = user.id;
+      req.session.userRole = user.role;
+      
+      const { password, ...userWithoutPassword } = user;
       res.status(201).json(userWithoutPassword);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -55,7 +92,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/users/login", async (req, res) => {
+  app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
       
@@ -68,7 +105,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
-      // TODO: Verify password hash in production
+      // Verify password
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      // Create session
+      req.session.userId = user.id;
+      req.session.userRole = user.role;
+
       const { password: _, ...userWithoutPassword } = user;
       res.json(userWithoutPassword);
     } catch (error) {
@@ -76,8 +122,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/users/:id", async (req, res) => {
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ message: "Could not log out" });
+      }
+      res.json({ message: "Logged out successfully" });
+    });
+  });
+
+  app.get("/api/auth/me", requireAuth, async (req, res) => {
     try {
+      const user = await storage.getUser(req.session.userId!);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { password, ...userWithoutPassword } = user;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/users/:id", requireAuth, async (req, res) => {
+    try {
+      // Users can only access their own profile or admins can access any
+      if (req.params.id !== req.session.userId && req.session.userRole !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
       const user = await storage.getUser(req.params.id);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -90,7 +164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/users", async (req, res) => {
+  app.get("/api/users", requireRole('admin'), async (req, res) => {
     try {
       const users = await storage.getAllUsers();
       const usersWithoutPasswords = users.map(({ password, ...user }) => user);
@@ -132,7 +206,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/products/pending", async (req, res) => {
+  app.get("/api/products/pending", requireRole('admin'), async (req, res) => {
     try {
       const products = await storage.getPendingProducts();
       res.json(products);
@@ -157,7 +231,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/products", upload.single('image'), async (req, res) => {
+  app.post("/api/products", requireAuth, upload.single('image'), async (req, res) => {
     try {
       const productData = insertProductSchema.parse(req.body);
       
@@ -207,7 +281,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/products/:id/approve", async (req, res) => {
+  app.post("/api/products/:id/approve", requireRole('admin'), async (req, res) => {
     try {
       const success = await storage.approveProduct(req.params.id);
       
@@ -245,7 +319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Order routes
-  app.post("/api/orders", async (req, res) => {
+  app.post("/api/orders", requireAuth, async (req, res) => {
     try {
       const orderData = insertOrderSchema.parse(req.body);
       const order = await storage.createOrder(orderData);
@@ -357,7 +431,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Message routes
-  app.post("/api/messages", async (req, res) => {
+  app.post("/api/messages", requireAuth, async (req, res) => {
     try {
       const messageData = insertMessageSchema.parse(req.body);
       const message = await storage.createMessage(messageData);
@@ -402,7 +476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Review routes
-  app.post("/api/reviews", async (req, res) => {
+  app.post("/api/reviews", requireAuth, async (req, res) => {
     try {
       const reviewData = insertReviewSchema.parse(req.body);
       const review = await storage.createReview(reviewData);

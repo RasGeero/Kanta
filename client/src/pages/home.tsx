@@ -124,7 +124,7 @@ export default function Home() {
                   data-testid={`hero-product-${product.id}`}
                 >
                   <img 
-                    src={product.processedImage || product.originalImage} 
+                    src={product.processedImage ?? product.originalImage ?? undefined} 
                     alt={product.title}
                     className="w-full h-48 object-cover" 
                   />
