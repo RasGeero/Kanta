@@ -32,7 +32,7 @@ export default function SellerDashboard() {
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+
   // Mock seller ID - in production, get from authentication
   const sellerId = "seller-id-placeholder";
 
@@ -103,12 +103,12 @@ export default function SellerDashboard() {
     try {
       const category = form.getValues('category');
       const gender = form.getValues('gender');
-      
+
       const result = await aiProcessing.processProductImage(file, category || '', gender || '');
-      
+
       form.setValue('originalImage', result.originalImageUrl);
       form.setValue('processedImage', result.processedImageUrl || result.originalImageUrl);
-      
+
       toast({
         title: result.success ? "AI processing completed" : "Processing completed with warnings",
         description: result.message,
@@ -176,7 +176,7 @@ export default function SellerDashboard() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Revenue</p>
-                <p className="text-2xl font-bold" data-testid="total-revenue">₵{stats.totalRevenue.toFixed(0)}</p>
+                <p className="text-2xl font-bold" data-testid="total-revenue">GH₵{stats.totalRevenue.toFixed(0)}</p>
               </div>
             </div>
           </CardContent>
@@ -375,7 +375,7 @@ export default function SellerDashboard() {
                     name="price"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Price (₵)</FormLabel>
+                        <FormLabel>Price (GH₵)</FormLabel>
                         <FormControl>
                           <Input 
                             type="number" 
@@ -511,7 +511,7 @@ export default function SellerDashboard() {
                       <div className="flex-1">
                         <h4 className="font-medium text-card-foreground">{order.product?.title}</h4>
                         <p className="text-sm text-muted-foreground">
-                          Order #{order.id.slice(-8)} • {order.quantity}x • ₵{parseFloat(order.totalAmount).toFixed(0)}
+                          Order #{order.id.slice(-8)} • {order.quantity}x • GH₵{parseFloat(order.totalAmount).toFixed(0)}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {order.buyerName} • {order.buyerPhone}
@@ -559,7 +559,7 @@ export default function SellerDashboard() {
                       <DollarSign className="h-4 w-4 text-primary" />
                       <div>
                         <p className="text-sm text-muted-foreground">Total Revenue</p>
-                        <p className="text-xl font-bold">₵{stats.totalRevenue.toFixed(0)}</p>
+                        <p className="text-xl font-bold">GH₵{stats.totalRevenue.toFixed(0)}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -598,7 +598,7 @@ export default function SellerDashboard() {
                   </CardContent>
                 </Card>
               </div>
-              
+
               {/* Detailed Analytics */}
               <Tabs defaultValue="orders" className="w-full">
                 <TabsList className="grid w-full grid-cols-3">
@@ -606,7 +606,7 @@ export default function SellerDashboard() {
                   <TabsTrigger value="products">Product Performance</TabsTrigger>
                   <TabsTrigger value="revenue">Revenue Breakdown</TabsTrigger>
                 </TabsList>
-                
+
                 <TabsContent value="orders" className="space-y-4">
                   <Card>
                     <CardHeader>
@@ -617,7 +617,7 @@ export default function SellerDashboard() {
                     </CardContent>
                   </Card>
                 </TabsContent>
-                
+
                 <TabsContent value="products" className="space-y-4">
                   <Card>
                     <CardHeader>
@@ -628,7 +628,7 @@ export default function SellerDashboard() {
                     </CardContent>
                   </Card>
                 </TabsContent>
-                
+
                 <TabsContent value="revenue" className="space-y-4">
                   <Card>
                     <CardHeader>
@@ -683,7 +683,7 @@ export default function SellerDashboard() {
                       {product.category} • {product.size} • {product.condition}
                     </p>
                     <div className="flex items-center space-x-2 mt-1">
-                      <span className="font-semibold text-primary">₵{parseFloat(product.price).toFixed(0)}</span>
+                      <span className="font-semibold text-primary">GH₵{parseFloat(product.price).toFixed(0)}</span>
                       <Badge variant={product.isApproved ? "default" : "secondary"}>
                         {product.isApproved ? "Approved" : "Pending Review"}
                       </Badge>
@@ -706,7 +706,7 @@ export default function SellerDashboard() {
 function OrderStatusUpdateSelect({ orderId, currentStatus }: { orderId: string; currentStatus: string }) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  
+
   const updateOrderStatusMutation = useMutation({
     mutationFn: async (status: string) => {
       return orderApi.updateOrder(orderId, { status });
@@ -790,7 +790,7 @@ function TopProductsList({ products, orders }: { products: any[]; orders: any[] 
     const productOrders = orders.filter(order => order.productId === product.id);
     const totalSold = productOrders.reduce((sum, order) => sum + order.quantity, 0);
     const totalRevenue = productOrders.reduce((sum, order) => sum + parseFloat(order.totalAmount), 0);
-    
+
     return {
       ...product,
       totalSold,
@@ -819,11 +819,11 @@ function TopProductsList({ products, orders }: { products: any[]; orders: any[] 
             <div className="flex-1">
               <h4 className="font-medium">{product.title}</h4>
               <p className="text-sm text-muted-foreground">
-                {product.totalSold} sold • ₵{product.totalRevenue.toFixed(0)} revenue
+                {product.totalSold} sold • GH₵{product.totalRevenue.toFixed(0)} revenue
               </p>
             </div>
             <div className="text-right">
-              <p className="font-semibold text-primary">₵{parseFloat(product.price).toFixed(0)}</p>
+              <p className="font-semibold text-primary">GH₵{parseFloat(product.price).toFixed(0)}</p>
               <p className="text-sm text-muted-foreground">{product.views} views</p>
             </div>
           </div>
@@ -862,7 +862,7 @@ function RevenueByCategoryChart({ orders, products }: { orders: any[]; products:
             <div key={category} className="space-y-2">
               <div className="flex justify-between items-center">
                 <span className="font-medium">{category}</span>
-                <span className="text-primary font-semibold">₵{revenueNum.toFixed(0)}</span>
+                <span className="text-primary font-semibold">GH₵{revenueNum.toFixed(0)}</span>
               </div>
               <div className="w-full bg-muted rounded-full h-2">
                 <div 

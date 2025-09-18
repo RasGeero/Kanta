@@ -204,7 +204,7 @@ export default function AdminDashboard() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Monthly Revenue</p>
-                <p className="text-2xl font-bold" data-testid="monthly-revenue">₵{stats.monthlyRevenue.toFixed(0)}</p>
+                <p className="text-2xl font-bold" data-testid="monthly-revenue">GH₵{stats.monthlyRevenue.toFixed(0)}</p>
               </div>
             </div>
           </CardContent>
