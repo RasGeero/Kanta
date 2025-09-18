@@ -434,8 +434,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Message routes
   app.post("/api/messages", requireAuth, async (req, res) => {
     try {
-      const messageData = insertMessageSchema.parse(req.body);
-      const message = await storage.createMessage(messageData);
+      // Infer senderId from authenticated session
+      const messageData = {
+        ...req.body,
+        senderId: req.session.userId
+      };
+      const validatedData = insertMessageSchema.parse(messageData);
+      const message = await storage.createMessage(validatedData);
       res.status(201).json(message);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -445,10 +450,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/messages/:user1Id/:user2Id", async (req, res) => {
+  app.get("/api/messages/:user1Id/:user2Id", requireAuth, async (req, res) => {
     try {
       const { user1Id, user2Id } = req.params;
       const productId = req.query.productId as string;
+      const requestingUserId = req.session.userId;
+      
+      // Ensure the requesting user is a participant in the conversation
+      if (requestingUserId !== user1Id && requestingUserId !== user2Id) {
+        return res.status(403).json({ message: "Access denied. You can only view your own conversations." });
+      }
       
       const messages = await storage.getMessagesBetweenUsers(user1Id, user2Id, productId);
       res.json(messages);
@@ -457,10 +468,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put("/api/messages/mark-read/:userId/:senderId", async (req, res) => {
+  app.put("/api/messages/mark-read/:userId/:senderId", requireAuth, async (req, res) => {
     try {
       const { userId, senderId } = req.params;
-      await storage.markMessagesAsRead(userId, senderId);
+      const productId = req.query.productId as string;
+      const requestingUserId = req.session.userId;
+      
+      // Ensure the requesting user can only mark their own messages as read
+      if (requestingUserId !== userId) {
+        return res.status(403).json({ message: "Access denied. You can only mark your own messages as read." });
+      }
+      
+      await storage.markMessagesAsRead(userId, senderId, productId);
       res.json({ message: "Messages marked as read" });
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });

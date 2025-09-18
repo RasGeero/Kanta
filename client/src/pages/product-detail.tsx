@@ -13,7 +13,9 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { productApi } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import type { ProductWithSeller } from "@shared/schema";
 import { useState } from "react";
+import ChatModal from "@/components/chat/chat-modal";
 
 export default function ProductDetail() {
   const { id } = useParams();
@@ -21,6 +23,7 @@ export default function ProductDetail() {
   const { isAuthenticated } = useAuth();
   const [selectedSize, setSelectedSize] = useState("");
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   const { data: product, isLoading, error } = useQuery({
     queryKey: ['/api/products', id],
@@ -130,10 +133,15 @@ export default function ProductDetail() {
   };
 
   const handleContactSeller = () => {
-    toast({
-      title: "Message sent",
-      description: "Your message has been sent to the seller.",
-    });
+    if (!isAuthenticated) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to contact the seller.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setIsChatOpen(true);
   };
 
   const handleShare = () => {
@@ -409,6 +417,17 @@ export default function ProductDetail() {
           )}
         </div>
       </div>
+
+      {/* Chat Modal */}
+      {product && (
+        <ChatModal
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+          sellerId={product.sellerId}
+          sellerName={`${product.seller.firstName}'s Store`}
+          product={product}
+        />
+      )}
     </div>
   );
 }

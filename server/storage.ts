@@ -658,9 +658,13 @@ export class MemStorage implements IStorage {
     return messages;
   }
 
-  async markMessagesAsRead(userId: string, senderId: string): Promise<void> {
+  async markMessagesAsRead(userId: string, senderId: string, productId?: string): Promise<void> {
     Array.from(this.messages.values())
-      .filter(m => m.receiverId === userId && m.senderId === senderId)
+      .filter(m => 
+        m.receiverId === userId && 
+        m.senderId === senderId &&
+        (!productId || m.productId === productId)
+      )
       .forEach(m => {
         m.isRead = true;
         this.messages.set(m.id, m);

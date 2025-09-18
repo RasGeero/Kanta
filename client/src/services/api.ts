@@ -148,7 +148,7 @@ export const orderApi = {
 
 // Message API
 export const messageApi = {
-  sendMessage: async (messageData: InsertMessage): Promise<Message> => {
+  sendMessage: async (messageData: Omit<InsertMessage, 'senderId'>): Promise<Message> => {
     const response = await apiRequest('POST', '/api/messages', messageData);
     return response.json();
   },
@@ -161,8 +161,11 @@ export const messageApi = {
     return response.json();
   },
 
-  markAsRead: async (userId: string, senderId: string): Promise<void> => {
-    await apiRequest('PUT', `/api/messages/mark-read/${userId}/${senderId}`);
+  markAsRead: async (userId: string, senderId: string, productId?: string): Promise<void> => {
+    const url = productId 
+      ? `/api/messages/mark-read/${userId}/${senderId}?productId=${productId}`
+      : `/api/messages/mark-read/${userId}/${senderId}`;
+    await apiRequest('PUT', url);
   },
 
   getUnreadCount: async (userId: string): Promise<number> => {
