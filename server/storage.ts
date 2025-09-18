@@ -79,7 +79,7 @@ export interface IStorage {
   // Message operations
   createMessage(message: InsertMessage): Promise<Message>;
   getMessagesBetweenUsers(user1Id: string, user2Id: string, productId?: string): Promise<Message[]>;
-  markMessagesAsRead(userId: string, senderId: string): Promise<void>;
+  markMessagesAsRead(userId: string, senderId: string, productId?: string): Promise<void>;
   getUnreadMessageCount(userId: string): Promise<number>;
   
   // Review operations
@@ -962,7 +962,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProduct(insertProduct: InsertProduct): Promise<Product> {
-    const [product] = await db.insert(products).values([insertProduct]).returning();
+    const [product] = await db.insert(products).values(insertProduct as any).returning();
     return product;
   }
 
@@ -1241,11 +1241,16 @@ export class DatabaseStorage implements IStorage {
       .orderBy(asc(messages.createdAt));
   }
 
-  async markMessagesAsRead(userId: string, senderId: string): Promise<void> {
+  async markMessagesAsRead(userId: string, senderId: string, productId?: string): Promise<void> {
+    const conditions = [eq(messages.receiverId, userId), eq(messages.senderId, senderId)];
+    if (productId) {
+      conditions.push(eq(messages.productId, productId));
+    }
+    
     await db
       .update(messages)
       .set({ isRead: true })
-      .where(and(eq(messages.receiverId, userId), eq(messages.senderId, senderId)));
+      .where(and(...conditions));
   }
 
   async getUnreadMessageCount(userId: string): Promise<number> {
@@ -1454,4 +1459,4 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
