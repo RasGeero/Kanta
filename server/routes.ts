@@ -991,7 +991,11 @@ async function processAIImage(imageUrl: string): Promise<string> {
 async function initializePaystackPayment(amount: number, email: string, orderId: string) {
   const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
   
-  if (!paystackSecretKey) {
+  console.log('Paystack Secret Key available:', !!paystackSecretKey);
+  console.log('Paystack Secret Key length:', paystackSecretKey ? paystackSecretKey.length : 0);
+  
+  if (!paystackSecretKey || paystackSecretKey.trim() === '') {
+    console.error('Paystack secret key issue - Key exists:', !!paystackSecretKey, 'Length:', paystackSecretKey ? paystackSecretKey.length : 0);
     throw new Error('Paystack secret key not configured');
   }
 
