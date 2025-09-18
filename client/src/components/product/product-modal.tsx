@@ -95,45 +95,35 @@ export default function ProductModal({
           {/* Product Details */}
           <div className="space-y-6">
             <DialogHeader>
-              <div className="flex items-start justify-between">
-                <div>
-                  <DialogTitle 
-                    className="text-2xl mb-2"
-                    data-testid={`product-modal-title-${product.id}`}
-                  >
-                    {product.title}
-                  </DialogTitle>
-                  {product.averageRating && product.averageRating > 0 && (
-                    <div className="flex items-center space-x-2">
-                      <div className="flex items-center space-x-1">
-                        {[...Array(5)].map((_, i) => (
-                          <Star 
-                            key={i} 
-                            className={`h-4 w-4 ${
-                              i < Math.floor(product.averageRating!) 
-                                ? 'text-accent fill-accent' 
-                                : 'text-muted'
-                            }`}
-                          />
-                        ))}
-                      </div>
-                      <span 
-                        className="text-sm text-muted-foreground"
-                        data-testid={`product-modal-reviews-${product.id}`}
-                      >
-                        ({product.reviewCount} reviews)
-                      </span>
-                    </div>
-                  )}
-                </div>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={onClose}
-                  data-testid={`product-modal-close-${product.id}`}
+              <div>
+                <DialogTitle 
+                  className="text-2xl mb-2"
+                  data-testid={`product-modal-title-${product.id}`}
                 >
-                  <X className="h-4 w-4" />
-                </Button>
+                  {product.title}
+                </DialogTitle>
+                {product.averageRating && product.averageRating > 0 && (
+                  <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1">
+                      {[...Array(5)].map((_, i) => (
+                        <Star 
+                          key={i} 
+                          className={`h-4 w-4 ${
+                            i < Math.floor(product.averageRating!) 
+                              ? 'text-accent fill-accent' 
+                              : 'text-muted'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span 
+                      className="text-sm text-muted-foreground"
+                      data-testid={`product-modal-reviews-${product.id}`}
+                    >
+                      ({product.reviewCount} reviews)
+                    </span>
+                  </div>
+                )}
               </div>
             </DialogHeader>
             
