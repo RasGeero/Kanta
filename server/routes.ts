@@ -175,6 +175,172 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user profile
+  app.put("/api/users/:id", requireAuth, async (req, res) => {
+    try {
+      // Users can only update their own profile or admins can update any
+      if (req.params.id !== req.session.userId && req.session.userRole !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const allowedUpdates = ['firstName', 'lastName', 'email', 'phone'];
+      const updates: Partial<any> = {};
+      
+      // Filter only allowed fields
+      for (const key of allowedUpdates) {
+        if (req.body[key] !== undefined) {
+          updates[key] = req.body[key];
+        }
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+
+      // Check if email is being updated and if it's already taken
+      if (updates.email) {
+        const existingUser = await storage.getUserByEmail(updates.email);
+        if (existingUser && existingUser.id !== req.params.id) {
+          return res.status(400).json({ message: "Email is already taken" });
+        }
+      }
+
+      const updatedUser = await storage.updateUser(req.params.id, updates);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const { password, ...userWithoutPassword } = updatedUser;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Change user password
+  app.put("/api/users/:id/password", requireAuth, async (req, res) => {
+    try {
+      // Users can only change their own password
+      if (req.params.id !== req.session.userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const { currentPassword, newPassword } = req.body;
+
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ message: "Current password and new password are required" });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ message: "New password must be at least 6 characters long" });
+      }
+
+      // Get current user to verify current password
+      const user = await storage.getUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Verify current password
+      const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
+      if (!isCurrentPasswordValid) {
+        return res.status(400).json({ message: "Current password is incorrect" });
+      }
+
+      // Hash new password
+      const saltRounds = 12;
+      const hashedNewPassword = await bcrypt.hash(newPassword, saltRounds);
+
+      // Update password
+      const updatedUser = await storage.updateUser(req.params.id, { password: hashedNewPassword });
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({ message: "Password updated successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Download user data
+  app.get("/api/users/:id/data", requireAuth, async (req, res) => {
+    try {
+      // Users can only download their own data
+      if (req.params.id !== req.session.userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const user = await storage.getUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Get user's related data
+      const orders = await storage.getOrdersByBuyer(req.params.id);
+      const wishlist = await storage.getUserWishlist(req.params.id);
+      const reviews = await storage.getReviewsBySeller(req.params.id);
+
+      const userData = {
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          createdAt: user.createdAt,
+        },
+        orders: orders.length,
+        wishlistItems: wishlist.length,
+        reviews: reviews.length,
+        exportedAt: new Date().toISOString(),
+      };
+
+      res.json(userData);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Delete user account
+  app.delete("/api/users/:id", requireAuth, async (req, res) => {
+    try {
+      // Users can only delete their own account or admins can delete any
+      if (req.params.id !== req.session.userId && req.session.userRole !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const user = await storage.getUser(req.params.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Instead of hard delete, mark user as inactive
+      const updatedUser = await storage.updateUser(req.params.id, { 
+        isActive: false,
+        email: `deleted_${Date.now()}_${user.email}` // Prevent email conflicts
+      });
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Destroy session if user is deleting their own account
+      if (req.params.id === req.session.userId) {
+        req.session.destroy((err) => {
+          if (err) {
+            console.error('Session destruction error:', err);
+          }
+        });
+      }
+
+      res.json({ message: "Account deactivated successfully" });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Product routes
   app.get("/api/products/search", async (req, res) => {
     try {
