@@ -101,7 +101,7 @@ export default function SellerDashboard() {
       const category = form.getValues('category');
       const gender = form.getValues('gender');
       
-      const result = await aiProcessing.processProductImage(file, category, gender);
+      const result = await aiProcessing.processProductImage(file, category || '', gender || '');
       
       form.setValue('originalImage', result.originalImageUrl);
       form.setValue('processedImage', result.processedImageUrl || result.originalImageUrl);
@@ -240,7 +240,7 @@ export default function SellerDashboard() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Category</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || ''}>
                           <FormControl>
                             <SelectTrigger data-testid="category-select">
                               <SelectValue placeholder="Select category" />
@@ -266,7 +266,7 @@ export default function SellerDashboard() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Size</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || ''}>
                           <FormControl>
                             <SelectTrigger data-testid="size-select">
                               <SelectValue placeholder="Select size" />
@@ -316,7 +316,7 @@ export default function SellerDashboard() {
                       <FormItem>
                         <FormLabel>Color</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., Red, Blue, Multi-color" {...field} data-testid="color-input" />
+                          <Input placeholder="e.g., Red, Blue, Multi-color" {...field} value={field.value || ''} data-testid="color-input" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -329,7 +329,7 @@ export default function SellerDashboard() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Gender</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value || ''}>
                           <FormControl>
                             <SelectTrigger data-testid="gender-select">
                               <SelectValue placeholder="Select gender" />
@@ -377,7 +377,8 @@ export default function SellerDashboard() {
                         <Textarea 
                           placeholder="Describe your product..." 
                           rows={3}
-                          {...field} 
+                          {...field}
+                          value={field.value || ''}
                           data-testid="description-input"
                         />
                       </FormControl>
@@ -487,7 +488,7 @@ export default function SellerDashboard() {
               {products.slice(0, 5).map((product) => (
                 <div key={product.id} className="flex items-center space-x-4 p-4 border rounded-lg">
                   <img 
-                    src={product.processedImage || product.originalImage} 
+                    src={product.processedImage ?? product.originalImage ?? undefined} 
                     alt={product.title}
                     className="w-16 h-16 object-cover rounded-lg"
                   />

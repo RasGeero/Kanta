@@ -248,7 +248,7 @@ export default function AdminDashboard() {
                   {pendingProducts.map((product) => (
                     <div key={product.id} className="flex items-center space-x-4 p-4 border rounded-lg">
                       <img 
-                        src={product.processedImage || product.originalImage} 
+                        src={product.processedImage ?? product.originalImage ?? undefined} 
                         alt={product.title}
                         className="w-16 h-16 object-cover rounded-lg cursor-pointer"
                         onClick={() => handleProductClick(product)}
@@ -369,7 +369,7 @@ export default function AdminDashboard() {
                   {orders.slice(0, 10).map((order) => (
                     <div key={order.id} className="flex items-center space-x-4 p-4 border rounded-lg">
                       <img 
-                        src={order.product.processedImage || order.product.originalImage} 
+                        src={order.product.processedImage ?? order.product.originalImage ?? undefined} 
                         alt={order.product.title}
                         className="w-16 h-16 object-cover rounded-lg"
                       />
@@ -391,7 +391,7 @@ export default function AdminDashboard() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm text-muted-foreground">
-                          {new Date(order.createdAt).toLocaleDateString()}
+                          {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A'}
                         </p>
                       </div>
                     </div>
@@ -479,7 +479,7 @@ export default function AdminDashboard() {
           {selectedProduct && (
             <div className="space-y-4">
               <img 
-                src={selectedProduct.processedImage || selectedProduct.originalImage} 
+                src={selectedProduct.processedImage ?? selectedProduct.originalImage ?? undefined} 
                 alt={selectedProduct.title}
                 className="w-full h-64 object-cover rounded-lg"
               />

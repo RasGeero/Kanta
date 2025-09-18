@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useSearchParams, useLocation } from "wouter";
+import { useLocation } from "wouter";
 import { ArrowLeft, CreditCard, Smartphone, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -248,7 +248,7 @@ export default function Checkout() {
             <CardContent className="space-y-4">
               <div className="flex items-center space-x-4">
                 <img 
-                  src={product.processedImage || product.originalImage} 
+                  src={product.processedImage ?? product.originalImage ?? undefined} 
                   alt={product.title}
                   className="w-16 h-16 object-cover rounded-lg"
                 />
