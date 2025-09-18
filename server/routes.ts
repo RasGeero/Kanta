@@ -106,6 +106,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
+      // Check if user is active
+      if (!user.isActive) {
+        return res.status(401).json({ message: "Account is deactivated" });
+      }
+
       // Verify password
       const isValidPassword = await bcrypt.compare(password, user.password);
       if (!isValidPassword) {
@@ -135,7 +140,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/auth/me", requireAuth, async (req, res) => {
     try {
       const user = await storage.getUser(req.session.userId!);
-      if (!user) {
+      if (!user || !user.isActive) {
         return res.status(404).json({ message: "User not found" });
       }
 
@@ -183,29 +188,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      const allowedUpdates = ['firstName', 'lastName', 'email', 'phone'];
-      const updates: Partial<any> = {};
-      
-      // Filter only allowed fields
-      for (const key of allowedUpdates) {
-        if (req.body[key] !== undefined) {
-          updates[key] = req.body[key];
-        }
-      }
+      // Validate request body with Zod
+      const updateProfileSchema = z.object({
+        firstName: z.string().min(2, "First name must be at least 2 characters").optional(),
+        lastName: z.string().min(2, "Last name must be at least 2 characters").optional(),
+        email: z.string().email("Please enter a valid email").optional(),
+        phone: z.string().min(10, "Phone number must be at least 10 digits").optional(),
+      });
 
-      if (Object.keys(updates).length === 0) {
+      const validatedData = updateProfileSchema.parse(req.body);
+
+      if (Object.keys(validatedData).length === 0) {
         return res.status(400).json({ message: "No valid fields to update" });
       }
 
       // Check if email is being updated and if it's already taken
-      if (updates.email) {
-        const existingUser = await storage.getUserByEmail(updates.email);
+      if (validatedData.email) {
+        const existingUser = await storage.getUserByEmail(validatedData.email);
         if (existingUser && existingUser.id !== req.params.id) {
           return res.status(400).json({ message: "Email is already taken" });
         }
       }
 
-      const updatedUser = await storage.updateUser(req.params.id, updates);
+      const updatedUser = await storage.updateUser(req.params.id, validatedData);
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -213,6 +218,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { password, ...userWithoutPassword } = updatedUser;
       res.json(userWithoutPassword);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -225,19 +233,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      const { currentPassword, newPassword } = req.body;
+      // Validate request body with Zod
+      const changePasswordSchema = z.object({
+        currentPassword: z.string().min(1, "Current password is required"),
+        newPassword: z.string().min(6, "New password must be at least 6 characters long")
+          .regex(/^(?=.*[A-Za-z])(?=.*\d)/, "Password must contain at least one letter and one number"),
+      });
 
-      if (!currentPassword || !newPassword) {
-        return res.status(400).json({ message: "Current password and new password are required" });
-      }
-
-      if (newPassword.length < 6) {
-        return res.status(400).json({ message: "New password must be at least 6 characters long" });
-      }
+      const { currentPassword, newPassword } = changePasswordSchema.parse(req.body);
 
       // Get current user to verify current password
       const user = await storage.getUser(req.params.id);
-      if (!user) {
+      if (!user || !user.isActive) {
         return res.status(404).json({ message: "User not found" });
       }
 
@@ -259,6 +266,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({ message: "Password updated successfully" });
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
       res.status(500).json({ message: "Internal server error" });
     }
   });

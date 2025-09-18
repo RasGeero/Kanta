@@ -39,8 +39,6 @@ type PasswordFormData = z.infer<typeof passwordFormSchema>;
 export default function Profile() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
-  const [isDownloadingData, setIsDownloadingData] = useState(false);
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user, isAuthenticated, logout } = useAuth();
@@ -233,16 +231,13 @@ export default function Profile() {
   };
 
   const handleDownloadData = () => {
-    setIsDownloadingData(true);
     downloadDataMutation.mutate();
-    setIsDownloadingData(false);
   };
 
   const handleDeleteAccount = () => {
     if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
       deleteAccountMutation.mutate();
     }
-    setIsDeletingAccount(false);
   };
 
   const handleLogout = () => {
