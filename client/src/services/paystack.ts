@@ -1,3 +1,23 @@
+// Add Paystack inline script types
+declare global {
+  interface Window {
+    PaystackPop: {
+      setup: (config: {
+        key: string;
+        email: string;
+        amount: number;
+        currency: string;
+        ref: string;
+        metadata?: Record<string, any>;
+        callback: (response: any) => void;
+        onClose: () => void;
+      }) => {
+        openIframe: () => void;
+      };
+    };
+  }
+}
+
 export interface PaystackConfig {
   publicKey: string;
   email: string;
@@ -20,14 +40,15 @@ export interface PaystackResponse {
 }
 
 export const paystack = {
-  initializePayment: async (amount: number, email: string, orderId: string): Promise<PaystackResponse> => {
+  initializePayment: async (email: string, orderId: string): Promise<PaystackResponse> => {
     try {
       const response = await fetch('/api/payments/initialize', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ amount, email, orderId }),
+        credentials: 'include', // Include session cookie
+        body: JSON.stringify({ email, orderId }),
       });
 
       if (!response.ok) {
@@ -48,6 +69,7 @@ export const paystack = {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include session cookie
         body: JSON.stringify({ reference }),
       });
 
@@ -63,27 +85,36 @@ export const paystack = {
   },
 
   openPaystackModal: (config: PaystackConfig) => {
-    // In production, use the actual Paystack inline script
-    // For now, we'll simulate the payment flow
-    const simulatePayment = () => {
-      const confirmed = window.confirm(
-        `Pay ₵${config.amount} to ${config.email}?\n\nThis is a simulation. In production, this would open the Paystack payment modal.`
-      );
-      
-      if (confirmed) {
-        const mockResponse = {
-          reference: config.reference,
-          status: 'success',
-          transaction: config.reference,
-        };
-        config.onSuccess?.(mockResponse);
-      } else {
-        config.onClose?.();
-      }
-    };
+    // Load Paystack inline script if not already loaded
+    if (!window.PaystackPop) {
+      const script = document.createElement('script');
+      script.src = 'https://js.paystack.co/v1/inline.js';
+      script.onload = () => {
+        initializePaystackPayment(config);
+      };
+      document.head.appendChild(script);
+    } else {
+      initializePaystackPayment(config);
+    }
 
-    // Simulate modal delay
-    setTimeout(simulatePayment, 500);
+    function initializePaystackPayment(config: PaystackConfig) {
+      const handler = window.PaystackPop.setup({
+        key: config.publicKey,
+        email: config.email,
+        amount: config.amount * 100, // Convert to kobo
+        currency: config.currency,
+        ref: config.reference,
+        metadata: config.metadata,
+        callback: function(response: any) {
+          config.onSuccess?.(response);
+        },
+        onClose: function() {
+          config.onClose?.();
+        }
+      });
+      
+      handler.openIframe();
+    }
   },
 
   // Mobile Money payment simulation

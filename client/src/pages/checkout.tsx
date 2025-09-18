@@ -87,23 +87,53 @@ export default function Checkout() {
       const paymentMethod = form.getValues('paymentMethod');
       
       if (paymentMethod === 'paystack') {
-        const paymentData = await paystack.initializePayment(amount, buyerEmail, orderId);
+        const paymentData = await paystack.initializePayment(buyerEmail, orderId);
         
         if (paymentData.status) {
-          // In production, redirect to Paystack checkout
+          const publicKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY;
+          if (!publicKey) {
+            throw new Error('Paystack public key not configured');
+          }
+
           paystack.openPaystackModal({
-            publicKey: import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || 'pk_test_placeholder',
+            publicKey,
             email: buyerEmail,
             amount: amount,
             currency: 'GHS',
             reference: paymentData.data.reference,
             metadata: { orderId },
-            onSuccess: (response) => {
-              toast({
-                title: "Payment successful",
-                description: "Your order has been placed successfully!",
-              });
-              setLocation('/profile'); // Navigate to orders page
+            onSuccess: async (response) => {
+              // Verify payment on success
+              try {
+                const verificationResult = await paystack.verifyPayment(response.reference);
+                
+                // Check both API success and transaction status
+                const isPaymentSuccessful = 
+                  verificationResult.status === true &&
+                  verificationResult.data?.status === 'success' &&
+                  verificationResult.data?.currency === 'GHS' &&
+                  verificationResult.data?.amount === (amount * 100) && // Validate amount in kobo
+                  verificationResult.data?.metadata?.orderId === orderId; // Validate order ID
+                
+                if (isPaymentSuccessful) {
+                  toast({
+                    title: "Payment successful",
+                    description: "Your order has been placed successfully!",
+                  });
+                  setLocation('/profile');
+                } else {
+                  console.error('Payment verification failed:', verificationResult);
+                  throw new Error('Payment verification failed - transaction not successful');
+                }
+              } catch (error) {
+                console.error('Payment verification error:', error);
+                toast({
+                  title: "Payment verification failed",
+                  description: "Please contact support if payment was deducted.",
+                  variant: "destructive",
+                });
+              }
+              setIsProcessingPayment(false);
             },
             onClose: () => {
               setIsProcessingPayment(false);

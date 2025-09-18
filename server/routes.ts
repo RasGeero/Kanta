@@ -388,24 +388,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Payment routes (Paystack integration)
-  app.post("/api/payments/initialize", async (req, res) => {
+  app.post("/api/payments/initialize", requireAuth, async (req, res) => {
     try {
-      const { amount, email, orderId } = req.body;
+      const { email, orderId } = req.body;
       
-      if (!amount || !email || !orderId) {
-        return res.status(400).json({ message: "Amount, email, and orderId are required" });
+      if (!email || !orderId) {
+        return res.status(400).json({ message: "Email and orderId are required" });
       }
 
-      // Initialize Paystack payment
+      // Fetch order from storage to verify ownership and get correct amount
+      const order = await storage.getOrder(orderId);
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      // Ensure order belongs to current user or user is admin
+      if (order.buyerId !== req.session.userId && req.session.userRole !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Ensure order is not already paid
+      if (order.status === 'paid') {
+        return res.status(400).json({ message: "Order already paid" });
+      }
+
+      const amount = parseFloat(order.totalAmount);
+
+      // Initialize Paystack payment with server-computed amount
       const paymentData = await initializePaystackPayment(amount, email, orderId);
       
       res.json(paymentData);
     } catch (error) {
+      console.error('Payment initialization error:', error);
       res.status(500).json({ message: "Payment initialization failed" });
     }
   });
 
-  app.post("/api/payments/verify", async (req, res) => {
+  app.post("/api/payments/verify", requireAuth, async (req, res) => {
     try {
       const { reference } = req.body;
       
@@ -416,17 +435,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Verify Paystack payment
       const paymentData = await verifyPaystackPayment(reference);
       
-      if (paymentData.status === 'success') {
-        // Update order status
-        const orderId = paymentData.metadata.orderId;
-        await storage.updateOrder(orderId, { 
-          status: 'paid', 
-          paymentReference: reference 
+      if (!paymentData.status || paymentData.data?.status !== 'success') {
+        return res.json({ success: false, message: "Payment not successful" });
+      }
+
+      const orderId = paymentData.data?.metadata?.orderId;
+      if (!orderId) {
+        return res.status(400).json({ message: "Invalid payment - no order ID" });
+      }
+
+      // Fetch order to verify payment details
+      const order = await storage.getOrder(orderId);
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+
+      // Ensure order belongs to current user or user is admin
+      if (order.buyerId !== req.session.userId && req.session.userRole !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Prevent replay attacks - check if already paid with this reference
+      if (order.status === 'paid' && order.paymentReference === reference) {
+        return res.json({ success: true, message: "Payment already processed" });
+      }
+
+      if (order.status === 'paid') {
+        return res.status(400).json({ message: "Order already paid with different reference" });
+      }
+
+      // Validate payment details
+      const expectedAmountInKobo = parseFloat(order.totalAmount) * 100;
+      const isPaymentValid = 
+        paymentData.data?.amount === expectedAmountInKobo &&
+        paymentData.data?.currency === 'GHS';
+
+      if (!isPaymentValid) {
+        return res.status(400).json({ 
+          message: "Payment validation failed - amount or currency mismatch" 
         });
       }
 
-      res.json(paymentData);
+      // Update order status atomically
+      await storage.updateOrder(orderId, { 
+        status: 'paid', 
+        paymentReference: reference 
+      });
+
+      res.json({ success: true, message: "Payment verified and order updated" });
     } catch (error) {
+      console.error('Payment verification error:', error);
       res.status(500).json({ message: "Payment verification failed" });
     }
   });
@@ -755,9 +813,13 @@ async function processAIImage(imageUrl: string): Promise<string> {
 
 // Paystack Integration Functions
 async function initializePaystackPayment(amount: number, email: string, orderId: string) {
+  const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
+  
+  if (!paystackSecretKey) {
+    throw new Error('Paystack secret key not configured');
+  }
+
   try {
-    const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY || "sk_test_placeholder_key";
-    
     const response = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
       headers: {
@@ -768,45 +830,43 @@ async function initializePaystackPayment(amount: number, email: string, orderId:
         amount: amount * 100, // Paystack expects amount in kobo
         email,
         currency: 'GHS',
+        reference: `kt_${Date.now()}_${orderId}`, // Add custom reference prefix
         metadata: {
           orderId,
           custom_fields: [
             {
               display_name: "Order ID",
-              variable_name: "order_id",
+              variable_name: "order_id", 
               value: orderId
             }
           ]
-        }
+        },
+        callback_url: `${process.env.BASE_URL || 'http://localhost:5000'}/api/payments/callback`
       }),
     });
 
     const data = await response.json();
     
     if (!response.ok) {
+      console.error('Paystack API error:', data);
       throw new Error(data.message || 'Payment initialization failed');
     }
 
     return data;
   } catch (error) {
     console.error('Paystack initialization error:', error);
-    // Return mock data for development
-    return {
-      status: true,
-      message: "Authorization URL created",
-      data: {
-        authorization_url: `https://checkout.paystack.com/mock_${Date.now()}`,
-        access_code: "mock_access_code",
-        reference: `mock_ref_${Date.now()}`
-      }
-    };
+    throw error;
   }
 }
 
 async function verifyPaystackPayment(reference: string) {
+  const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
+  
+  if (!paystackSecretKey) {
+    throw new Error('Paystack secret key not configured');
+  }
+
   try {
-    const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY || "sk_test_placeholder_key";
-    
     const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
       method: 'GET',
       headers: {
@@ -817,24 +877,13 @@ async function verifyPaystackPayment(reference: string) {
     const data = await response.json();
     
     if (!response.ok) {
+      console.error('Paystack verification API error:', data);
       throw new Error(data.message || 'Payment verification failed');
     }
 
     return data;
   } catch (error) {
     console.error('Paystack verification error:', error);
-    // Return mock success for development
-    return {
-      status: 'success',
-      data: {
-        amount: 26000, // 260 GHS in kobo
-        currency: 'GHS',
-        status: 'success',
-        reference,
-        metadata: {
-          orderId: 'mock_order_id'
-        }
-      }
-    };
+    throw error;
   }
 }
