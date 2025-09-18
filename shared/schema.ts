@@ -105,6 +105,45 @@ export const cartItems = pgTable("cart_items", {
   createdAt: timestamp("created_at").default(sql`now()`),
 });
 
+export const userNotificationSettings = pgTable("user_notification_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  emailOrderUpdates: boolean("email_order_updates").default(true),
+  emailPromotions: boolean("email_promotions").default(true),
+  emailMessages: boolean("email_messages").default(true),
+  smsOrderUpdates: boolean("sms_order_updates").default(false),
+  smsPromotions: boolean("sms_promotions").default(false),
+  smsDeliveryUpdates: boolean("sms_delivery_updates").default(false),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export const userSecuritySettings = pgTable("user_security_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false),
+  twoFactorSecret: text("two_factor_secret"), // TOTP secret
+  passwordChangedAt: timestamp("password_changed_at"),
+  loginNotifications: boolean("login_notifications").default(true),
+  accountLockout: boolean("account_lockout").default(false),
+  lockoutUntil: timestamp("lockout_until"),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+export const userPrivacySettings = pgTable("user_privacy_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  profileVisibility: text("profile_visibility").default("public"), // public, private, sellers_only
+  showOnlineStatus: boolean("show_online_status").default(true),
+  allowDirectMessages: boolean("allow_direct_messages").default(true),
+  shareDataWithPartners: boolean("share_data_with_partners").default(false),
+  marketingEmails: boolean("marketing_emails").default(true),
+  activityTracking: boolean("activity_tracking").default(true),
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertProductSchema = createInsertSchema(products).omit({ 
