@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import { cartApi, wishlistApi } from "@/services/api";
 import { useAuth } from "@/contexts/auth-context";
 import { queryClient } from "@/lib/queryClient";
-import { Search, Filter, ShoppingBag, Store, ArrowRight } from "lucide-react";
+import { Search, ShoppingBag, Store, ArrowRight, DollarSign, Eye, Package, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -39,7 +39,7 @@ export default function Home() {
     if (selectedCategory && selectedCategory !== 'All Categories') params.append('category', selectedCategory);
     if (selectedSize && selectedSize !== 'Any Size') params.append('size', selectedSize);
     if (maxPrice) params.append('maxPrice', maxPrice);
-    
+
     window.location.href = `/search?${params.toString()}`;
   };
 
@@ -50,7 +50,7 @@ export default function Home() {
       vintage: 'category=Vintage',
       affordable: 'maxPrice=100'
     };
-    
+
     window.location.href = `/search?${filterMap[filter] || ''}`;
   };
 
@@ -145,10 +145,10 @@ export default function Home() {
       });
       return;
     }
-    
+
     // Check if product is in wishlist
     const isInWishlist = userWishlist.some((item: ProductWithSeller) => item.id === productId);
-    
+
     if (isInWishlist) {
       removeFromWishlistMutation.mutate(productId);
     } else {
@@ -198,7 +198,7 @@ export default function Home() {
                 </Link>
               </div>
             </div>
-            
+
             {/* Featured Products Preview */}
             <div className="grid grid-cols-2 gap-4">
               {featuredProducts.slice(0, 2).map((product) => (
@@ -245,7 +245,7 @@ export default function Home() {
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
                   </div>
                 </div>
-                
+
                 {/* Category Filter */}
                 <div className="lg:col-span-2">
                   <label className="block text-sm font-medium text-card-foreground mb-2">Category</label>
@@ -263,7 +263,7 @@ export default function Home() {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 {/* Size Filter */}
                 <div className="lg:col-span-2">
                   <label className="block text-sm font-medium text-card-foreground mb-2">Size</label>
@@ -282,7 +282,7 @@ export default function Home() {
                     </SelectContent>
                   </Select>
                 </div>
-                
+
                 {/* Price Range */}
                 <div className="lg:col-span-2">
                   <label className="block text-sm font-medium text-card-foreground mb-2">Max Price (₵)</label>
@@ -294,7 +294,7 @@ export default function Home() {
                     data-testid="max-price-input"
                   />
                 </div>
-                
+
                 {/* Search Button */}
                 <div className="lg:col-span-2">
                   <Button 
@@ -307,7 +307,7 @@ export default function Home() {
                   </Button>
                 </div>
               </div>
-              
+
               {/* Quick Filters */}
               <div className="mt-6 flex flex-wrap gap-2">
                 <span className="text-sm text-muted-foreground">Popular:</span>
@@ -360,7 +360,7 @@ export default function Home() {
             <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-4">Trending in Kantamanto</h2>
             <p className="text-xl text-muted-foreground">Handpicked items with AI-enhanced try-on experience</p>
           </div>
-          
+
           {isLoadingFeatured ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
               {[...Array(8)].map((_, i) => (
@@ -388,7 +388,7 @@ export default function Home() {
               })}
             </div>
           )}
-          
+
           <div className="text-center mt-12">
             <Link href="/search">
               <Button 
@@ -411,7 +411,7 @@ export default function Home() {
             <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-4">Seller Dashboard</h2>
             <p className="text-xl text-muted-foreground">Manage your thrift business with powerful tools</p>
           </div>
-          
+
           <Card className="shadow-lg overflow-hidden">
             {/* Dashboard Header */}
             <div className="gradient-bg p-6 text-primary-foreground">
@@ -425,41 +425,41 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            
+
             {/* Dashboard Content */}
             <CardContent className="p-6">
               {/* Stats Grid */}
               <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <div className="text-center">
                   <div className="bg-accent/20 p-4 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
-                    <i className="fas fa-coins text-accent text-xl"></i>
+                    <DollarSign className="h-6 w-6 text-accent" />
                   </div>
                   <h4 className="text-2xl font-bold text-card-foreground">₵2,450</h4>
                   <p className="text-sm text-muted-foreground">Revenue</p>
                 </div>
                 <div className="text-center">
-                  <div className="bg-primary/20 p-4 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
-                    <ShoppingBag className="text-primary h-6 w-6" />
+                  <div className="bg-secondary/20 p-4 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
+                    <Package className="h-6 w-6 text-secondary" />
                   </div>
                   <h4 className="text-2xl font-bold text-card-foreground">47</h4>
                   <p className="text-sm text-muted-foreground">Orders</p>
                 </div>
                 <div className="text-center">
-                  <div className="bg-secondary/20 p-4 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
-                    <i className="fas fa-eye text-secondary text-xl"></i>
+                  <div className="bg-primary/20 p-4 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
+                    <Eye className="h-6 w-6 text-primary" />
                   </div>
-                  <h4 className="text-2xl font-bold text-card-foreground">1,203</h4>
-                  <p className="text-sm text-muted-foreground">Product Views</p>
+                  <h4 className="text-2xl font-bold text-card-foreground">892</h4>
+                  <p className="text-sm text-muted-foreground">Views</p>
                 </div>
                 <div className="text-center">
                   <div className="bg-accent/20 p-4 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
-                    <i className="fas fa-star text-accent text-xl"></i>
+                    <Star className="h-6 w-6 text-accent" />
                   </div>
                   <h4 className="text-2xl font-bold text-card-foreground">4.8</h4>
                   <p className="text-sm text-muted-foreground">Rating</p>
                 </div>
               </div>
-              
+
               {/* Quick Actions */}
               <div className="grid md:grid-cols-3 gap-4">
                 <Link href="/seller-dashboard">
