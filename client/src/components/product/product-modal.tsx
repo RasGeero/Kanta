@@ -133,7 +133,7 @@ export default function ProductModal({
                   className="text-3xl font-bold text-primary"
                   data-testid={`product-modal-price-${product.id}`}
                 >
-                  ₵{parseFloat(product.price).toFixed(0)}
+                  GH₵{parseFloat(product.price).toFixed(0)}
                 </span>
               </div>
               

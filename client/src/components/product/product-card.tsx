@@ -92,7 +92,7 @@ export default function ProductCard({
             className="text-lg font-bold text-primary"
             data-testid={`product-price-${product.id}`}
           >
-            ₵{parseFloat(product.price).toFixed(0)}
+            GH₵{parseFloat(product.price).toFixed(0)}
           </span>
           {product.averageRating && product.averageRating > 0 && (
             <div className="flex items-center space-x-1">

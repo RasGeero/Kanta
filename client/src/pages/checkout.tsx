@@ -371,7 +371,7 @@ export default function Checkout() {
                       </p>
                       <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
                     </div>
-                    <span className="font-semibold text-card-foreground">₵{(parseFloat(item.product.price) * item.quantity).toFixed(0)}</span>
+                    <span className="font-semibold text-card-foreground">GH₵{(parseFloat(item.product.price) * item.quantity).toFixed(0)}</span>
                   </div>
                 </div>
               ))}
@@ -379,15 +379,15 @@ export default function Checkout() {
               <div className="border-t pt-4 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Subtotal</span>
-                  <span className="text-card-foreground" data-testid="subtotal">₵{subtotal.toFixed(0)}</span>
+                  <span className="text-card-foreground" data-testid="subtotal">GH₵{subtotal.toFixed(0)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Delivery</span>
-                  <span className="text-card-foreground" data-testid="delivery-fee">₵{deliveryFee}</span>
+                  <span className="text-card-foreground" data-testid="delivery-fee">GH₵{deliveryFee}</span>
                 </div>
                 <div className="flex justify-between font-semibold text-lg border-t pt-2">
                   <span className="text-card-foreground">Total</span>
-                  <span className="text-primary" data-testid="total-amount">₵{total.toFixed(0)}</span>
+                  <span className="text-primary" data-testid="total-amount">GH₵{total.toFixed(0)}</span>
                 </div>
               </div>
             </CardContent>
@@ -574,7 +574,7 @@ export default function Checkout() {
                     data-testid="place-order-button"
                   >
                     <Lock className="h-5 w-5 mr-2" />
-                    {isProcessingPayment ? "Processing..." : `Pay ₵${total.toFixed(0)} Securely`}
+                    {isProcessingPayment ? "Processing..." : `Pay GH₵${total.toFixed(0)} Securely`}
                   </Button>
 
                   <div className="text-center">

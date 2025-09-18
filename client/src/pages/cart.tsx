@@ -284,9 +284,9 @@ export default function Cart() {
                             className="font-semibold text-primary"
                             data-testid={`item-total-${item.id}`}
                           >
-                            ₵{(parseFloat(item.product.price) * item.quantity).toFixed(0)}
+                            GH₵{(parseFloat(item.product.price) * item.quantity).toFixed(0)}
                           </p>
-                          <p className="text-sm text-muted-foreground">₵{parseFloat(item.product.price).toFixed(0)}/each</p>
+                          <p className="text-sm text-muted-foreground">GH₵{parseFloat(item.product.price).toFixed(0)}/each</p>
                         </div>
                         
                         {/* Remove Button */}
@@ -347,26 +347,26 @@ export default function Cart() {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span data-testid="cart-subtotal">₵{subtotal.toFixed(0)}</span>
+                    <span data-testid="cart-subtotal">GH₵{subtotal.toFixed(0)}</span>
                   </div>
                   
                   {discount > 0 && (
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Discount ({discount}%)</span>
-                      <span className="text-accent" data-testid="cart-discount">-₵{discountAmount.toFixed(0)}</span>
+                      <span className="text-accent" data-testid="cart-discount">-GH₵{discountAmount.toFixed(0)}</span>
                     </div>
                   )}
                   
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Delivery</span>
-                    <span data-testid="cart-delivery">₵{deliveryFee}</span>
+                    <span data-testid="cart-delivery">GH₵{deliveryFee}</span>
                   </div>
                   
                   <Separator />
                   
                   <div className="flex justify-between font-semibold text-lg">
                     <span>Total</span>
-                    <span className="text-primary" data-testid="cart-total">₵{total.toFixed(0)}</span>
+                    <span className="text-primary" data-testid="cart-total">GH₵{total.toFixed(0)}</span>
                   </div>
                 </div>
                 
@@ -387,7 +387,7 @@ export default function Cart() {
                 
                 <div className="pt-4 border-t">
                   <p className="text-xs text-muted-foreground text-center">
-                    Free delivery on orders over ₵200
+                    Free delivery on orders over GH₵200
                   </p>
                 </div>
               </CardContent>
