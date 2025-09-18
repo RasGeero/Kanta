@@ -153,7 +153,7 @@ export default function Checkout() {
                   await cartApi.clearCart();
                   
                   // Invalidate cart and orders queries
-                  queryClient.invalidateQueries({ queryKey: ['/api/cart', user?.id] });
+                  queryClient.invalidateQueries({ queryKey: ['/api/cart'] });
                   queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
                   
                   toast({
@@ -214,7 +214,7 @@ export default function Checkout() {
               await cartApi.clearCart();
               
               // Invalidate cart and orders queries
-              queryClient.invalidateQueries({ queryKey: ['/api/cart', user?.id] });
+              queryClient.invalidateQueries({ queryKey: ['/api/cart'] });
               queryClient.invalidateQueries({ queryKey: ['/api/orders'] });
               
               toast({
