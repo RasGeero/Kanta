@@ -155,3 +155,7 @@ export type OrderWithDetails = Order & {
   seller: User;
   product: Product;
 };
+
+export type CartItemWithProduct = CartItem & {
+  product: ProductWithSeller;
+};

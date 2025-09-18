@@ -1,6 +1,9 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Link } from "wouter";
+import { cartApi, wishlistApi } from "@/services/api";
+import { useAuth } from "@/contexts/auth-context";
+import { queryClient } from "@/lib/queryClient";
 import { Search, Filter, ShoppingBag, Store, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +24,7 @@ export default function Home() {
   const [selectedProduct, setSelectedProduct] = useState<ProductWithSeller | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
 
   // Fetch featured products
   const { data: featuredProducts = [], isLoading: isLoadingFeatured } = useQuery({
@@ -55,20 +59,67 @@ export default function Home() {
     setIsModalOpen(true);
   };
 
-  const handleAddToCart = (productId: string) => {
-    // TODO: Implement cart functionality
-    toast({
-      title: "Added to cart",
-      description: "Product has been added to your cart.",
-    });
+  // Add to cart mutation
+  const addToCartMutation = useMutation({
+    mutationFn: ({ productId, size }: { productId: string; size?: string }) => 
+      cartApi.addToCart(productId, 1, size),
+    onSuccess: () => {
+      toast({
+        title: "Added to cart",
+        description: "Product has been added to your cart.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/cart'] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add product to cart. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddToCart = (productId: string, size?: string) => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to add items to your cart.",
+        variant: "destructive",
+      });
+      return;
+    }
+    addToCartMutation.mutate({ productId, size });
   };
 
+  // Add to wishlist mutation
+  const addToWishlistMutation = useMutation({
+    mutationFn: (productId: string) => wishlistApi.addToWishlist(productId),
+    onSuccess: () => {
+      toast({
+        title: "Added to wishlist",
+        description: "Product has been added to your wishlist.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/wishlist'] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add product to wishlist. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleToggleWishlist = (productId: string) => {
-    // TODO: Implement wishlist functionality
-    toast({
-      title: "Added to wishlist",
-      description: "Product has been added to your wishlist.",
-    });
+    if (!isAuthenticated) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to add items to your wishlist.",
+        variant: "destructive",
+      });
+      return;
+    }
+    addToWishlistMutation.mutate(productId);
   };
 
   return (

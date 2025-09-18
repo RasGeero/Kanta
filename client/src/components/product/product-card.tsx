@@ -45,7 +45,7 @@ export default function ProductCard({
     >
       <div className="relative">
         <img 
-          src={product.processedImage || product.originalImage} 
+          src={product.processedImage || product.originalImage || ''} 
           alt={product.title}
           className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
           data-testid={`product-image-${product.id}`}

@@ -219,11 +219,12 @@ export const cartApi = {
     await apiRequest('POST', '/api/cart', { productId, quantity, size });
   },
 
-  removeFromCart: async (productId: string, size: string): Promise<void> => {
-    await apiRequest('DELETE', `/api/cart/${productId}?size=${encodeURIComponent(size)}`);
+  removeFromCart: async (productId: string, size?: string): Promise<void> => {
+    const query = size ? `?size=${encodeURIComponent(size)}` : '';
+    await apiRequest('DELETE', `/api/cart/${productId}${query}`);
   },
 
-  updateCartQuantity: async (productId: string, quantity: number, size: string): Promise<void> => {
+  updateCartQuantity: async (productId: string, quantity: number, size?: string): Promise<void> => {
     await apiRequest('PUT', `/api/cart/${productId}`, { quantity, size });
   },
 

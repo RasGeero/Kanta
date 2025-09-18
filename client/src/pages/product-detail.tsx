@@ -1,5 +1,8 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useParams, Link } from "wouter";
+import { cartApi, wishlistApi } from "@/services/api";
+import { useAuth } from "@/contexts/auth-context";
+import { queryClient } from "@/lib/queryClient";
 import { ArrowLeft, Star, Heart, MessageCircle, ShoppingCart, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,6 +18,7 @@ import { useState } from "react";
 export default function ProductDetail() {
   const { id } = useParams();
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
   const [selectedSize, setSelectedSize] = useState("");
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -24,11 +28,35 @@ export default function ProductDetail() {
     enabled: !!id,
   });
 
+  // Add to cart mutation
+  const addToCartMutation = useMutation({
+    mutationFn: () => cartApi.addToCart(id!, 1, selectedSize || undefined),
+    onSuccess: () => {
+      toast({
+        title: "Added to cart",
+        description: "Product has been added to your cart.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/cart'] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add product to cart. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleAddToCart = () => {
-    toast({
-      title: "Added to cart",
-      description: "Product has been added to your cart.",
-    });
+    if (!isAuthenticated) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to add items to your cart.",
+        variant: "destructive",
+      });
+      return;
+    }
+    addToCartMutation.mutate();
   };
 
   const handleBuyNow = () => {
@@ -36,11 +64,35 @@ export default function ProductDetail() {
     window.location.href = `/checkout?productId=${id}&size=${selectedSize}`;
   };
 
+  // Add to wishlist mutation
+  const addToWishlistMutation = useMutation({
+    mutationFn: () => wishlistApi.addToWishlist(id!),
+    onSuccess: () => {
+      toast({
+        title: "Added to wishlist",
+        description: "Product has been saved to your wishlist.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/wishlist'] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add product to wishlist. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleToggleWishlist = () => {
-    toast({
-      title: "Added to wishlist",
-      description: "Product has been saved to your wishlist.",
-    });
+    if (!isAuthenticated) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to add items to your wishlist.",
+        variant: "destructive",
+      });
+      return;
+    }
+    addToWishlistMutation.mutate();
   };
 
   const handleContactSeller = () => {
@@ -127,7 +179,7 @@ export default function ProductDetail() {
         <div className="space-y-4">
           <div className="relative">
             <img 
-              src={images[currentImageIndex]} 
+              src={images[currentImageIndex] || ''} 
               alt={product.title}
               className="w-full h-96 lg:h-[500px] object-cover rounded-lg"
               data-testid="product-main-image"
@@ -153,7 +205,7 @@ export default function ProductDetail() {
             {images.slice(0, 4).map((image, index) => (
               <img 
                 key={index}
-                src={image} 
+                src={image || ''} 
                 alt={`Product view ${index + 1}`}
                 className={`w-full h-20 object-cover rounded-lg cursor-pointer transition-opacity ${
                   index === currentImageIndex ? 'opacity-100 ring-2 ring-primary' : 'opacity-60 hover:opacity-100'

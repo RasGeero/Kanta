@@ -1,5 +1,8 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { cartApi, wishlistApi } from "@/services/api";
+import { useAuth } from "@/contexts/auth-context";
+import { queryClient } from "@/lib/queryClient";
 import { Filter, SlidersHorizontal, Grid, List } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +30,7 @@ export default function Search() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const { toast } = useToast();
+  const { isAuthenticated } = useAuth();
 
   // Parse URL parameters
   useEffect(() => {
@@ -66,11 +70,11 @@ export default function Search() {
       case 'price-high':
         return parseFloat(b.price) - parseFloat(a.price);
       case 'popular':
-        return b.views - a.views;
+        return (b.views || 0) - (a.views || 0);
       case 'rating':
         return (b.averageRating || 0) - (a.averageRating || 0);
       default:
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
     }
   });
 
@@ -99,18 +103,67 @@ export default function Search() {
     setIsModalOpen(true);
   };
 
-  const handleAddToCart = (productId: string) => {
-    toast({
-      title: "Added to cart",
-      description: "Product has been added to your cart.",
-    });
+  // Add to cart mutation
+  const addToCartMutation = useMutation({
+    mutationFn: ({ productId, size }: { productId: string; size?: string }) => 
+      cartApi.addToCart(productId, 1, size),
+    onSuccess: () => {
+      toast({
+        title: "Added to cart",
+        description: "Product has been added to your cart.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/cart'] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add product to cart. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAddToCart = (productId: string, size?: string) => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to add items to your cart.",
+        variant: "destructive",
+      });
+      return;
+    }
+    addToCartMutation.mutate({ productId, size });
   };
 
+  // Add to wishlist mutation
+  const addToWishlistMutation = useMutation({
+    mutationFn: (productId: string) => wishlistApi.addToWishlist(productId),
+    onSuccess: () => {
+      toast({
+        title: "Added to wishlist",
+        description: "Product has been saved to your wishlist.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/wishlist'] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to add product to wishlist. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleToggleWishlist = (productId: string) => {
-    toast({
-      title: "Added to wishlist",
-      description: "Product has been saved to your wishlist.",
-    });
+    if (!isAuthenticated) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to add items to your wishlist.",
+        variant: "destructive",
+      });
+      return;
+    }
+    addToWishlistMutation.mutate(productId);
   };
 
   const FilterContent = () => (
@@ -388,7 +441,7 @@ export default function Search() {
                   <CardContent className="p-4">
                     <div className="flex items-center space-x-4">
                       <img 
-                        src={product.processedImage || product.originalImage} 
+                        src={product.processedImage || product.originalImage || ''} 
                         alt={product.title}
                         className="w-24 h-24 object-cover rounded-lg"
                       />

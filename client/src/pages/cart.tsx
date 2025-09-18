@@ -1,5 +1,9 @@
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { cartApi } from "@/services/api";
+import { useAuth } from "@/contexts/auth-context";
+import { queryClient } from "@/lib/queryClient";
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,71 +11,103 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 
-interface CartItem {
-  id: string;
-  productId: string;
-  title: string;
-  price: number;
-  image: string;
-  size?: string;
-  color?: string;
-  condition: string;
-  seller: string;
-  quantity: number;
-}
+import type { CartItemWithProduct } from "@shared/schema";
 
 export default function Cart() {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [promoCode, setPromoCode] = useState("");
   const [isApplyingPromo, setIsApplyingPromo] = useState(false);
   const [discount, setDiscount] = useState(0);
   const { toast } = useToast();
+  const { user, isAuthenticated } = useAuth();
 
-  // Load cart from localStorage on component mount
-  useEffect(() => {
-    const savedCart = localStorage.getItem('kantamanto_cart');
-    if (savedCart) {
-      try {
-        setCartItems(JSON.parse(savedCart));
-      } catch (error) {
-        console.error('Error loading cart:', error);
-        localStorage.removeItem('kantamanto_cart');
-      }
-    }
-  }, []);
+  // Fetch user's cart from backend
+  const { data: cartItems = [], isLoading: isLoadingCart, refetch: refetchCart } = useQuery({
+    queryKey: ['/api/cart', user?.id],
+    queryFn: () => cartApi.getUserCart(),
+    enabled: isAuthenticated,
+    staleTime: 0, // Always fetch fresh cart data
+  });
 
-  // Save cart to localStorage whenever cart changes
-  useEffect(() => {
-    localStorage.setItem('kantamanto_cart', JSON.stringify(cartItems));
-  }, [cartItems]);
+  // Update quantity mutation
+  const updateQuantityMutation = useMutation({
+    mutationFn: ({ productId, quantity, size }: { productId: string; quantity: number; size?: string }) => 
+      cartApi.updateCartQuantity(productId, quantity, size),
+    onSuccess: () => {
+      refetchCart();
+      toast({
+        title: "Cart updated",
+        description: "Item quantity has been updated.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update cart. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
-  const updateQuantity = (itemId: string, newQuantity: number) => {
+  const updateQuantity = (item: CartItemWithProduct, newQuantity: number) => {
     if (newQuantity < 1) {
-      removeItem(itemId);
+      removeItem(item);
       return;
     }
-
-    setCartItems(items =>
-      items.map(item =>
-        item.id === itemId ? { ...item, quantity: newQuantity } : item
-      )
-    );
-  };
-
-  const removeItem = (itemId: string) => {
-    setCartItems(items => items.filter(item => item.id !== itemId));
-    toast({
-      title: "Item removed",
-      description: "Item has been removed from your cart.",
+    updateQuantityMutation.mutate({ 
+      productId: item.productId, 
+      quantity: newQuantity, 
+      size: item.size || undefined
     });
   };
+
+  // Remove item mutation
+  const removeItemMutation = useMutation({
+    mutationFn: ({ productId, size }: { productId: string; size?: string }) => 
+      cartApi.removeFromCart(productId, size),
+    onSuccess: () => {
+      refetchCart();
+      toast({
+        title: "Item removed",
+        description: "Item has been removed from your cart.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to remove item. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const removeItem = (item: CartItemWithProduct) => {
+    removeItemMutation.mutate({ 
+      productId: item.productId, 
+      size: item.size || undefined
+    });
+  };
+
+  // Clear cart mutation
+  const clearCartMutation = useMutation({
+    mutationFn: () => cartApi.clearCart(),
+    onSuccess: () => {
+      refetchCart();
+      toast({
+        title: "Cart cleared",
+        description: "All items have been removed from your cart.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to clear cart. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const clearCart = () => {
-    setCartItems([]);
-    toast({
-      title: "Cart cleared",
-      description: "All items have been removed from your cart.",
-    });
+    clearCartMutation.mutate();
   };
 
   const applyPromoCode = () => {
@@ -105,43 +141,35 @@ export default function Cart() {
   };
 
   // Calculate totals
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const subtotal = cartItems.reduce((sum, item) => sum + (parseFloat(item.product.price) * item.quantity), 0);
   const discountAmount = (subtotal * discount) / 100;
   const deliveryFee = cartItems.length > 0 ? 15 : 0;
   const total = subtotal - discountAmount + deliveryFee;
 
-  // Mock cart items for demo if cart is empty
-  useEffect(() => {
-    if (cartItems.length === 0) {
-      const mockItems: CartItem[] = [
-        {
-          id: "cart-1",
-          productId: "product-1",
-          title: "African Print Dress",
-          price: 95,
-          image: "https://images.unsplash.com/photo-1596783074918-c84cb06531ca?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=500",
-          size: "M",
-          color: "Multi-color",
-          condition: "excellent",
-          seller: "Ama's Closet",
-          quantity: 1,
-        },
-        {
-          id: "cart-2",
-          productId: "product-2", 
-          title: "Vintage Denim Jacket",
-          price: 150,
-          image: "https://images.unsplash.com/photo-1551698618-1dfe5d97d256?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&h=500",
-          size: "L",
-          color: "Blue",
-          condition: "good",
-          seller: "Kwaku's Vintage",
-          quantity: 1,
-        },
-      ];
-      setCartItems(mockItems);
-    }
-  }, []);
+  // Show loading state
+  if (!isAuthenticated) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold mb-4">Please Sign In</h1>
+          <p className="text-muted-foreground mb-6">You need to be signed in to view your cart.</p>
+          <Link href="/">
+            <Button>Go to Home</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoadingCart) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold mb-4">Loading Cart...</h1>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -194,8 +222,8 @@ export default function Cart() {
                     <div className="flex items-center space-x-4 py-4">
                       <Link href={`/product/${item.productId}`}>
                         <img 
-                          src={item.image} 
-                          alt={item.title}
+                          src={item.product.originalImage || 'https://images.unsplash.com/photo-1596783074918-c84cb06531ca'} 
+                          alt={item.product.title}
                           className="w-20 h-20 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
                           data-testid={`cart-item-image-${item.id}`}
                         />
@@ -207,18 +235,18 @@ export default function Cart() {
                             className="font-semibold text-card-foreground hover:text-primary cursor-pointer"
                             data-testid={`cart-item-title-${item.id}`}
                           >
-                            {item.title}
+                            {item.product.title}
                           </h3>
                         </Link>
-                        <p className="text-sm text-muted-foreground">by {item.seller}</p>
+                        <p className="text-sm text-muted-foreground">by {item.product.seller?.username || 'Unknown Seller'}</p>
                         <div className="flex items-center space-x-2 mt-1">
                           {item.size && (
                             <span className="text-xs bg-muted px-2 py-1 rounded">Size: {item.size}</span>
                           )}
-                          {item.color && (
-                            <span className="text-xs bg-muted px-2 py-1 rounded">Color: {item.color}</span>
+                          {item.product.color && (
+                            <span className="text-xs bg-muted px-2 py-1 rounded">Color: {item.product.color}</span>
                           )}
-                          <span className="text-xs bg-muted px-2 py-1 rounded capitalize">{item.condition}</span>
+                          <span className="text-xs bg-muted px-2 py-1 rounded capitalize">{item.product.condition}</span>
                         </div>
                       </div>
                       
@@ -228,7 +256,7 @@ export default function Cart() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                            onClick={() => updateQuantity(item, item.quantity - 1)}
                             disabled={item.quantity <= 1}
                             data-testid={`decrease-quantity-${item.id}`}
                           >
@@ -243,7 +271,7 @@ export default function Cart() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                            onClick={() => updateQuantity(item, item.quantity + 1)}
                             data-testid={`increase-quantity-${item.id}`}
                           >
                             <Plus className="h-4 w-4" />
@@ -256,16 +284,16 @@ export default function Cart() {
                             className="font-semibold text-primary"
                             data-testid={`item-total-${item.id}`}
                           >
-                            ₵{(item.price * item.quantity).toFixed(0)}
+                            ₵{(parseFloat(item.product.price) * item.quantity).toFixed(0)}
                           </p>
-                          <p className="text-sm text-muted-foreground">₵{item.price}/each</p>
+                          <p className="text-sm text-muted-foreground">₵{parseFloat(item.product.price).toFixed(0)}/each</p>
                         </div>
                         
                         {/* Remove Button */}
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => removeItem(item.id)}
+                          onClick={() => removeItem(item)}
                           data-testid={`remove-item-${item.id}`}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
