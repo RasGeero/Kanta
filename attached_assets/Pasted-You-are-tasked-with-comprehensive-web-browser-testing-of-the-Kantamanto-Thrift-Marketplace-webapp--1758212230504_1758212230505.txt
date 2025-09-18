@@ -1,0 +1,112 @@
+You are tasked with comprehensive web browser testing of the "Kantamanto Thrift Marketplace" webapp to ensure all core functionality works properly. This is a React/TypeScript frontend with Express.js backend serving a thrift clothing marketplace for Ghana.
+
+Your Mission:
+Systematically test, identify issues, and fix all core marketplace functionality using web browser testing. Make autonomous technical decisions to deliver a polished, working application.
+
+EXCLUDED FROM TESTING (Do Not Address):
+
+Authentication Problems (login/signup issues)
+AI Features Not Working (background removal, virtual try-on)
+Mobile Money Payments (MTN/Vodafone/AirtelTigo) - keys not available yet
+INCLUDED FOR TESTING:
+
+Paystack Payment Integration (testing keys are available in Secrets)
+CORE FUNCTIONALITY TO TEST & FIX:
+
+Product Browsing & Discovery
+
+Homepage loads with featured products
+Product grid displays correctly with images, prices, titles
+Product cards are clickable and lead to detail pages
+Search functionality works (search bar, results display)
+Category filtering works properly
+Price range filtering functions
+Size/color/condition filters operate correctly
+Pagination or infinite scroll works
+Product Detail Pages
+
+Individual product pages load correctly
+All product information displays (title, description, price, seller info)
+Image galleries work (multiple images, zoom if applicable)
+"Add to Cart" functionality works
+"Add to Wishlist" functionality works
+Related/similar products display
+Seller profile links work
+Shopping Cart & Checkout System
+
+Items can be added to cart
+Cart icon shows correct item count
+Cart modal/page displays items correctly
+Quantity can be updated in cart
+Items can be removed from cart
+Cart persists across page refreshes
+Total pricing calculations are accurate
+Checkout flow works properly
+Paystack payment integration functions correctly (test with available keys)
+Payment Processing (Paystack Only)
+
+Paystack payment modal loads correctly
+Test card payments work with test keys
+Payment success/failure handling works
+Order status updates after payment
+Payment verification process functions
+Error handling for payment failures
+User Interface & Navigation
+
+Navigation menu works on all screen sizes
+Mobile responsiveness across all pages
+Bottom navigation (if exists) functions properly
+Search suggestions/autocomplete works
+Loading states display appropriately
+Error messages are user-friendly
+Form validation provides clear feedback
+Seller Dashboard (if accessible)
+
+Seller can view their products
+Product listing forms work correctly
+Image upload functionality operates
+Product editing capabilities function
+Order management displays correctly
+Analytics/metrics display properly
+Admin Dashboard (if accessible)
+
+Admin can view all products
+Product approval workflow functions
+User management capabilities work
+Report handling operates correctly
+Platform metrics display accurately
+Wishlist & User Preferences
+
+Wishlist adds/removes items correctly
+Wishlist page displays saved items
+User can access wishlist from navigation
+Profile pages load and display correctly
+API Functionality
+
+All API endpoints respond correctly
+Error handling works for failed requests
+Loading states show during API calls
+Data refreshes appropriately after actions
+TESTING METHODOLOGY:
+
+Use screenshot tool to visually verify each feature
+Check browser console for errors after each interaction
+Test responsive design on different viewport sizes
+Verify form submissions and data persistence
+Test edge cases (empty states, long text, special characters)
+Test Paystack payment flow with available test keys
+Ensure smooth user experience flow between pages
+AUTONOMOUS DECISION GUIDELINES:
+
+Fix obvious bugs immediately (broken links, console errors, layout issues)
+Improve user experience where clearly needed (loading states, error messages)
+Ensure data consistency across components
+Implement missing basic functionality that users would expect
+Prioritize core marketplace features over secondary features
+Make UI/UX improvements that enhance usability
+Ensure Paystack payment integration works smoothly
+DELIVERABLES:
+Execute comprehensive testing and deliver a fully functional thrift marketplace where users can browse products, manage their cart, complete purchases via Paystack, and navigate seamlessly. Document any major issues found and how they were resolved.
+
+IMPORTANT: Work autonomously - don't ask for clarification. Make the best technical decisions to ensure a polished, working marketplace application with functional payment processing.
+
