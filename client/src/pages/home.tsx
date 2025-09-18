@@ -215,7 +215,7 @@ export default function Home() {
                   />
                   <CardContent className="p-4">
                     <h3 className="font-semibold text-card-foreground">{product.title}</h3>
-                    <p className="text-primary font-bold">₵{parseFloat(product.price).toFixed(0)}</p>
+                    <p className="text-primary font-bold">GH₵{parseFloat(product.price).toFixed(0)}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -285,7 +285,7 @@ export default function Home() {
 
                 {/* Price Range */}
                 <div className="lg:col-span-2">
-                  <label className="block text-sm font-medium text-card-foreground mb-2">Max Price (₵)</label>
+                  <label className="block text-sm font-medium text-card-foreground mb-2">Max Price (GH₵)</label>
                   <Input
                     type="number"
                     placeholder="500"
@@ -345,7 +345,7 @@ export default function Home() {
                   onClick={() => handleQuickFilter('affordable')}
                   data-testid="quick-filter-affordable"
                 >
-                  Under ₵100
+                  Under GH₵100
                 </Button>
               </div>
             </CardContent>
@@ -434,7 +434,7 @@ export default function Home() {
                   <div className="bg-accent/20 p-4 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
                     <DollarSign className="h-6 w-6 text-accent" />
                   </div>
-                  <h4 className="text-2xl font-bold text-card-foreground">₵2,450</h4>
+                  <h4 className="text-2xl font-bold text-card-foreground">GH₵2,450</h4>
                   <p className="text-sm text-muted-foreground">Revenue</p>
                 </div>
                 <div className="text-center">

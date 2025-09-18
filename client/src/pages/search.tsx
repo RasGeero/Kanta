@@ -274,7 +274,7 @@ export default function Search() {
 
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium mb-2">Min Price (₵)</label>
+          <label className="block text-sm font-medium mb-2">Min Price (GH₵)</label>
           <Input
             type="number"
             placeholder="0"
@@ -284,7 +284,7 @@ export default function Search() {
           />
         </div>
         <div>
-          <label className="block text-sm font-medium mb-2">Max Price (₵)</label>
+          <label className="block text-sm font-medium mb-2">Max Price (GH₵)</label>
           <Input
             type="number"
             placeholder="1000"
@@ -417,10 +417,10 @@ export default function Search() {
                   <Badge variant="secondary">Gender: {gender}</Badge>
                 )}
                 {minPrice && (
-                  <Badge variant="secondary">Min: ₵{minPrice}</Badge>
+                  <Badge variant="secondary">Min: GH₵{minPrice}</Badge>
                 )}
                 {maxPrice && (
-                  <Badge variant="secondary">Max: ₵{maxPrice}</Badge>
+                  <Badge variant="secondary">Max: GH₵{maxPrice}</Badge>
                 )}
               </div>
             </div>
@@ -498,7 +498,7 @@ export default function Search() {
                         )}
                       </div>
                       <div className="text-right">
-                        <p className="text-2xl font-bold text-primary">₵{parseFloat(product.price).toFixed(0)}</p>
+                        <p className="text-2xl font-bold text-primary">GH₵{parseFloat(product.price).toFixed(0)}</p>
                         <p className="text-sm text-muted-foreground">{product.views} views</p>
                       </div>
                     </div>
