@@ -136,6 +136,13 @@ export default function Search() {
   };
 
   // Add to wishlist mutation
+  // Fetch user's wishlist to check product status
+  const { data: userWishlist = [] } = useQuery({
+    queryKey: ['/api/wishlist'],
+    queryFn: () => wishlistApi.getUserWishlist(),
+    enabled: isAuthenticated,
+  });
+
   const addToWishlistMutation = useMutation({
     mutationFn: (productId: string) => wishlistApi.addToWishlist(productId),
     onSuccess: () => {
@@ -154,6 +161,24 @@ export default function Search() {
     },
   });
 
+  const removeFromWishlistMutation = useMutation({
+    mutationFn: (productId: string) => wishlistApi.removeFromWishlist(productId),
+    onSuccess: () => {
+      toast({
+        title: "Removed from wishlist",
+        description: "Product has been removed from your wishlist.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/wishlist'] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to remove product from wishlist. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleToggleWishlist = (productId: string) => {
     if (!isAuthenticated) {
       toast({
@@ -163,7 +188,15 @@ export default function Search() {
       });
       return;
     }
-    addToWishlistMutation.mutate(productId);
+    
+    // Check if product is in wishlist
+    const isInWishlist = userWishlist.some((item: ProductWithSeller) => item.id === productId);
+    
+    if (isInWishlist) {
+      removeFromWishlistMutation.mutate(productId);
+    } else {
+      addToWishlistMutation.mutate(productId);
+    }
   };
 
   const FilterContent = () => (
@@ -419,15 +452,19 @@ export default function Search() {
             </Card>
           ) : viewMode === "grid" ? (
             <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-              {sortedProducts.map((product) => (
-                <div key={product.id} onClick={() => handleProductClick(product)}>
-                  <ProductCard
-                    product={product}
-                    onAddToCart={handleAddToCart}
-                    onToggleWishlist={handleToggleWishlist}
-                  />
-                </div>
-              ))}
+              {sortedProducts.map((product) => {
+                const isInWishlist = userWishlist.some((item: ProductWithSeller) => item.id === product.id);
+                return (
+                  <div key={product.id} onClick={() => handleProductClick(product)}>
+                    <ProductCard
+                      product={product}
+                      onAddToCart={handleAddToCart}
+                      onToggleWishlist={handleToggleWishlist}
+                      isInWishlist={isInWishlist}
+                    />
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="space-y-4">

@@ -51,8 +51,8 @@ export default function Profile() {
 
   // Fetch user wishlist
   const { data: wishlist = [], isLoading: isLoadingWishlist } = useQuery({
-    queryKey: ['/api/users', userId, 'wishlist'],
-    queryFn: () => wishlistApi.getUserWishlist(userId),
+    queryKey: ['/api/wishlist'],
+    queryFn: () => wishlistApi.getUserWishlist(),
   });
 
   // Fetch unread messages count
@@ -87,13 +87,13 @@ export default function Profile() {
 
   // Remove from wishlist mutation
   const removeFromWishlistMutation = useMutation({
-    mutationFn: (productId: string) => wishlistApi.removeFromWishlist(userId, productId),
+    mutationFn: (productId: string) => wishlistApi.removeFromWishlist(productId),
     onSuccess: () => {
       toast({
         title: "Removed from wishlist",
         description: "Item has been removed from your wishlist.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/users', userId, 'wishlist'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/wishlist'] });
     },
     onError: () => {
       toast({
@@ -336,7 +336,7 @@ export default function Profile() {
                   {orders.map((order) => (
                     <div key={order.id} className="flex items-center space-x-4 p-4 border rounded-lg">
                       <img 
-                        src={order.product.processedImage || order.product.originalImage} 
+                        src={order.product.processedImage || order.product.originalImage || ''} 
                         alt={order.product.title}
                         className="w-16 h-16 object-cover rounded-lg"
                       />
@@ -354,7 +354,7 @@ export default function Profile() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm text-muted-foreground">
-                          {new Date(order.createdAt).toLocaleDateString()}
+                          {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A'}
                         </p>
                         <Button variant="outline" size="sm" className="mt-2">
                           View Details
@@ -395,7 +395,7 @@ export default function Profile() {
                     <Card key={product.id} className="overflow-hidden group">
                       <div className="relative">
                         <img 
-                          src={product.processedImage || product.originalImage} 
+                          src={product.processedImage || product.originalImage || ''} 
                           alt={product.title}
                           className="w-full h-48 object-cover"
                         />

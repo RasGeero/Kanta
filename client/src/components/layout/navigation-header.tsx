@@ -1,6 +1,9 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { ShoppingBag, Heart, ShoppingCart, Menu, User, LogOut } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { cartApi, wishlistApi } from "@/services/api";
+import type { ProductWithSeller, CartItemWithProduct } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -14,6 +17,24 @@ export default function NavigationHeader() {
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   
   const { user, isAuthenticated, logout } = useAuth();
+
+  // Fetch cart items count
+  const { data: cartItems = [] } = useQuery<CartItemWithProduct[]>({
+    queryKey: ['/api/cart'],
+    queryFn: () => cartApi.getUserCart(),
+    enabled: isAuthenticated,
+  });
+
+  // Fetch wishlist items count
+  const { data: wishlistItems = [] } = useQuery<ProductWithSeller[]>({
+    queryKey: ['/api/wishlist'],
+    queryFn: () => wishlistApi.getUserWishlist(),
+    enabled: isAuthenticated,
+  });
+
+  // Calculate counts
+  const cartCount = cartItems.reduce((total, item) => total + item.quantity, 0);
+  const wishlistCount = wishlistItems.length;
 
   const handleAuthModal = (mode: "login" | "register") => {
     setAuthMode(mode);
@@ -82,9 +103,11 @@ export default function NavigationHeader() {
                     data-testid="wishlist-button"
                   >
                     <Heart className="h-5 w-5" />
-                    <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                      3
-                    </span>
+                    {wishlistCount > 0 && (
+                      <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                        {wishlistCount}
+                      </span>
+                    )}
                   </Button>
                   <Link href="/cart">
                     <Button
@@ -94,9 +117,11 @@ export default function NavigationHeader() {
                       data-testid="cart-button"
                     >
                       <ShoppingCart className="h-5 w-5" />
-                      <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                        2
-                      </span>
+                      {cartCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                          {cartCount}
+                        </span>
+                      )}
                     </Button>
                   </Link>
                 </>
@@ -211,11 +236,11 @@ export default function NavigationHeader() {
                     data-testid="mobile-nav-cart"
                   >
                     <ShoppingCart className="h-5 w-5" />
-                    <span>Cart (2)</span>
+                    <span>Cart{cartCount > 0 ? ` (${cartCount})` : ''}</span>
                   </Link>
                   <div className="flex items-center space-x-2 text-lg font-medium hover:text-primary transition-colors mt-2 cursor-pointer">
                     <Heart className="h-5 w-5" />
-                    <span>Wishlist (3)</span>
+                    <span>Wishlist{wishlistCount > 0 ? ` (${wishlistCount})` : ''}</span>
                   </div>
                 </div>
                 

@@ -64,6 +64,16 @@ export default function ProductDetail() {
     window.location.href = `/checkout?productId=${id}&size=${selectedSize}`;
   };
 
+  // Fetch user's wishlist to check product status
+  const { data: userWishlist = [] } = useQuery({
+    queryKey: ['/api/wishlist'],
+    queryFn: () => wishlistApi.getUserWishlist(),
+    enabled: isAuthenticated,
+  });
+
+  // Check if current product is in wishlist
+  const isInWishlist = userWishlist.some((item: ProductWithSeller) => item.id === id);
+
   // Add to wishlist mutation
   const addToWishlistMutation = useMutation({
     mutationFn: () => wishlistApi.addToWishlist(id!),
@@ -83,6 +93,25 @@ export default function ProductDetail() {
     },
   });
 
+  // Remove from wishlist mutation
+  const removeFromWishlistMutation = useMutation({
+    mutationFn: () => wishlistApi.removeFromWishlist(id!),
+    onSuccess: () => {
+      toast({
+        title: "Removed from wishlist",
+        description: "Product has been removed from your wishlist.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/wishlist'] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to remove product from wishlist. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleToggleWishlist = () => {
     if (!isAuthenticated) {
       toast({
@@ -92,7 +121,12 @@ export default function ProductDetail() {
       });
       return;
     }
-    addToWishlistMutation.mutate();
+    
+    if (isInWishlist) {
+      removeFromWishlistMutation.mutate();
+    } else {
+      addToWishlistMutation.mutate();
+    }
   };
 
   const handleContactSeller = () => {
