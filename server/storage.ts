@@ -16,8 +16,18 @@ import {
   type Report,
   type InsertReport,
   type CartItem,
-  type InsertCartItem
+  type InsertCartItem,
+  users,
+  products,
+  orders,
+  messages,
+  reviews,
+  wishlist,
+  reports,
+  cartItems
 } from "@shared/schema";
+import { db } from "./db";
+import { eq, and, ilike, gte, lte, desc, asc, count, avg, sql } from "drizzle-orm";
 
 // Extended cart types for storage
 export type CartItemWithProduct = CartItem & {
@@ -776,6 +786,7 @@ export class MemStorage implements IStorage {
       const cartItem: CartItem = {
         ...insertCartItem,
         id,
+        size: insertCartItem.size ?? null,
         createdAt: new Date(),
         quantity: Math.max(1, Math.min(10, insertCartItem.quantity || 1))
       };
@@ -884,4 +895,563 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export class DatabaseStorage implements IStorage {
+  // User operations
+  async getUser(id: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+
+  async updateUser(id: string, updates: Partial<User>): Promise<User | undefined> {
+    const [user] = await db.update(users).set(updates).where(eq(users.id, id)).returning();
+    return user || undefined;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return db.select().from(users);
+  }
+
+  // Product operations
+  async getProduct(id: string): Promise<Product | undefined> {
+    const [product] = await db.select().from(products).where(eq(products.id, id));
+    return product || undefined;
+  }
+
+  async getProductWithSeller(id: string): Promise<ProductWithSeller | undefined> {
+    const result = await db
+      .select()
+      .from(products)
+      .leftJoin(users, eq(products.sellerId, users.id))
+      .where(eq(products.id, id));
+
+    if (!result[0] || !result[0].users) return undefined;
+
+    const product = result[0].products;
+    const seller = result[0].users;
+
+    // Get seller rating
+    const ratingResult = await db
+      .select({ avgRating: avg(reviews.rating), count: count(reviews.id) })
+      .from(reviews)
+      .where(eq(reviews.reviewedId, seller.id));
+
+    const avgRating = ratingResult[0]?.avgRating || 0;
+    const reviewCount = ratingResult[0]?.count || 0;
+
+    return {
+      ...product,
+      seller,
+      averageRating: Math.round(Number(avgRating) * 10) / 10,
+      reviewCount: Number(reviewCount)
+    };
+  }
+
+  async createProduct(insertProduct: InsertProduct): Promise<Product> {
+    const [product] = await db.insert(products).values([insertProduct]).returning();
+    return product;
+  }
+
+  async updateProduct(id: string, updates: Partial<Product>): Promise<Product | undefined> {
+    const [product] = await db
+      .update(products)
+      .set({ ...updates, updatedAt: sql`now()` })
+      .where(eq(products.id, id))
+      .returning();
+    return product || undefined;
+  }
+
+  async deleteProduct(id: string): Promise<boolean> {
+    const result = await db.delete(products).where(eq(products.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getProductsBySeller(sellerId: string): Promise<Product[]> {
+    return db.select().from(products).where(eq(products.sellerId, sellerId));
+  }
+
+  async searchProducts(query: {
+    search?: string;
+    category?: string;
+    size?: string;
+    color?: string;
+    gender?: string;
+    maxPrice?: number;
+    minPrice?: number;
+    limit?: number;
+    offset?: number;
+  }): Promise<ProductWithSeller[]> {
+    let productQuery = db
+      .select()
+      .from(products)
+      .leftJoin(users, eq(products.sellerId, users.id))
+      .where(and(eq(products.isActive, true), eq(products.isApproved, true)));
+
+    // Apply filters
+    const conditions = [eq(products.isActive, true), eq(products.isApproved, true)];
+
+    if (query.search) {
+      conditions.push(
+        sql`(${products.title} ILIKE ${`%${query.search}%`} OR ${products.description} ILIKE ${`%${query.search}%`} OR ${products.category} ILIKE ${`%${query.search}%`})`
+      );
+    }
+
+    if (query.category && query.category !== 'All Categories') {
+      conditions.push(eq(products.category, query.category));
+    }
+
+    if (query.size && query.size !== 'Any Size') {
+      conditions.push(eq(products.size, query.size));
+    }
+
+    if (query.color) {
+      conditions.push(ilike(products.color, `%${query.color}%`));
+    }
+
+    if (query.gender && query.gender !== 'all') {
+      conditions.push(
+        sql`(${products.gender} = ${query.gender} OR ${products.gender} = 'unisex')`
+      );
+    }
+
+    if (query.minPrice !== undefined) {
+      conditions.push(gte(sql`CAST(${products.price} AS NUMERIC)`, query.minPrice));
+    }
+
+    if (query.maxPrice !== undefined) {
+      conditions.push(lte(sql`CAST(${products.price} AS NUMERIC)`, query.maxPrice));
+    }
+
+    const result = await db
+      .select()
+      .from(products)
+      .leftJoin(users, eq(products.sellerId, users.id))
+      .where(and(...conditions))
+      .limit(query.limit || 20)
+      .offset(query.offset || 0);
+
+    // Transform results to ProductWithSeller
+    const productsWithSeller: ProductWithSeller[] = [];
+    for (const row of result) {
+      if (row.users && row.products) {
+        const ratingResult = await db
+          .select({ avgRating: avg(reviews.rating), count: count(reviews.id) })
+          .from(reviews)
+          .where(eq(reviews.reviewedId, row.users.id));
+
+        const avgRating = ratingResult[0]?.avgRating || 0;
+        const reviewCount = ratingResult[0]?.count || 0;
+
+        productsWithSeller.push({
+          ...row.products,
+          seller: row.users,
+          averageRating: Math.round(Number(avgRating) * 10) / 10,
+          reviewCount: Number(reviewCount)
+        });
+      }
+    }
+
+    return productsWithSeller;
+  }
+
+  async getFeaturedProducts(limit: number = 8): Promise<ProductWithSeller[]> {
+    const result = await db
+      .select()
+      .from(products)
+      .leftJoin(users, eq(products.sellerId, users.id))
+      .where(and(eq(products.isActive, true), eq(products.isApproved, true)))
+      .orderBy(desc(products.views))
+      .limit(limit);
+
+    const productsWithSeller: ProductWithSeller[] = [];
+    for (const row of result) {
+      if (row.users && row.products) {
+        const ratingResult = await db
+          .select({ avgRating: avg(reviews.rating), count: count(reviews.id) })
+          .from(reviews)
+          .where(eq(reviews.reviewedId, row.users.id));
+
+        const avgRating = ratingResult[0]?.avgRating || 0;
+        const reviewCount = ratingResult[0]?.count || 0;
+
+        productsWithSeller.push({
+          ...row.products,
+          seller: row.users,
+          averageRating: Math.round(Number(avgRating) * 10) / 10,
+          reviewCount: Number(reviewCount)
+        });
+      }
+    }
+
+    return productsWithSeller;
+  }
+
+  async getPendingProducts(): Promise<ProductWithSeller[]> {
+    const result = await db
+      .select()
+      .from(products)
+      .leftJoin(users, eq(products.sellerId, users.id))
+      .where(and(eq(products.isApproved, false), eq(products.isActive, true)));
+
+    const productsWithSeller: ProductWithSeller[] = [];
+    for (const row of result) {
+      if (row.users && row.products) {
+        productsWithSeller.push({
+          ...row.products,
+          seller: row.users
+        });
+      }
+    }
+
+    return productsWithSeller;
+  }
+
+  async approveProduct(id: string): Promise<boolean> {
+    const result = await db
+      .update(products)
+      .set({ isApproved: true })
+      .where(eq(products.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async incrementProductViews(id: string): Promise<void> {
+    await db
+      .update(products)
+      .set({ views: sql`${products.views} + 1` })
+      .where(eq(products.id, id));
+  }
+
+  // Order operations
+  async getOrder(id: string): Promise<Order | undefined> {
+    const [order] = await db.select().from(orders).where(eq(orders.id, id));
+    return order || undefined;
+  }
+
+  async getOrderWithDetails(id: string): Promise<OrderWithDetails | undefined> {
+    const [order] = await db.select().from(orders).where(eq(orders.id, id));
+    if (!order) return undefined;
+
+    const buyer = await this.getUser(order.buyerId);
+    const seller = await this.getUser(order.sellerId);
+    const product = await this.getProduct(order.productId);
+
+    if (!buyer || !seller || !product) return undefined;
+
+    return { ...order, buyer, seller, product };
+  }
+
+  async createOrder(insertOrder: InsertOrder): Promise<Order> {
+    const [order] = await db.insert(orders).values(insertOrder).returning();
+    return order;
+  }
+
+  async updateOrder(id: string, updates: Partial<Order>): Promise<Order | undefined> {
+    const [order] = await db
+      .update(orders)
+      .set({ ...updates, updatedAt: sql`now()` })
+      .where(eq(orders.id, id))
+      .returning();
+    return order || undefined;
+  }
+
+  async getOrdersByBuyer(buyerId: string): Promise<OrderWithDetails[]> {
+    const orderList = await db.select().from(orders).where(eq(orders.buyerId, buyerId));
+    
+    const ordersWithDetails: OrderWithDetails[] = [];
+    for (const order of orderList) {
+      const buyer = await this.getUser(order.buyerId);
+      const seller = await this.getUser(order.sellerId);
+      const product = await this.getProduct(order.productId);
+
+      if (buyer && seller && product) {
+        ordersWithDetails.push({ ...order, buyer, seller, product });
+      }
+    }
+
+    return ordersWithDetails.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
+  }
+
+  async getOrdersBySeller(sellerId: string): Promise<OrderWithDetails[]> {
+    const orderList = await db.select().from(orders).where(eq(orders.sellerId, sellerId));
+    
+    const ordersWithDetails: OrderWithDetails[] = [];
+    for (const order of orderList) {
+      const buyer = await this.getUser(order.buyerId);
+      const seller = await this.getUser(order.sellerId);
+      const product = await this.getProduct(order.productId);
+
+      if (buyer && seller && product) {
+        ordersWithDetails.push({ ...order, buyer, seller, product });
+      }
+    }
+
+    return ordersWithDetails.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
+  }
+
+  async getAllOrders(): Promise<OrderWithDetails[]> {
+    const orderList = await db.select().from(orders);
+    
+    const ordersWithDetails: OrderWithDetails[] = [];
+    for (const order of orderList) {
+      const buyer = await this.getUser(order.buyerId);
+      const seller = await this.getUser(order.sellerId);
+      const product = await this.getProduct(order.productId);
+
+      if (buyer && seller && product) {
+        ordersWithDetails.push({ ...order, buyer, seller, product });
+      }
+    }
+
+    return ordersWithDetails.sort((a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0));
+  }
+
+  // Message operations
+  async createMessage(insertMessage: InsertMessage): Promise<Message> {
+    const [message] = await db.insert(messages).values(insertMessage).returning();
+    return message;
+  }
+
+  async getMessagesBetweenUsers(user1Id: string, user2Id: string, productId?: string): Promise<Message[]> {
+    const conditions = [
+      sql`((${messages.senderId} = ${user1Id} AND ${messages.receiverId} = ${user2Id}) OR (${messages.senderId} = ${user2Id} AND ${messages.receiverId} = ${user1Id}))`
+    ];
+
+    if (productId) {
+      conditions.push(eq(messages.productId, productId));
+    }
+
+    return db
+      .select()
+      .from(messages)
+      .where(and(...conditions))
+      .orderBy(asc(messages.createdAt));
+  }
+
+  async markMessagesAsRead(userId: string, senderId: string): Promise<void> {
+    await db
+      .update(messages)
+      .set({ isRead: true })
+      .where(and(eq(messages.receiverId, userId), eq(messages.senderId, senderId)));
+  }
+
+  async getUnreadMessageCount(userId: string): Promise<number> {
+    const result = await db
+      .select({ count: count(messages.id) })
+      .from(messages)
+      .where(and(eq(messages.receiverId, userId), eq(messages.isRead, false)));
+    
+    return Number(result[0]?.count || 0);
+  }
+
+  // Review operations
+  async createReview(insertReview: InsertReview): Promise<Review> {
+    const [review] = await db.insert(reviews).values(insertReview).returning();
+    return review;
+  }
+
+  async getReviewsBySeller(sellerId: string): Promise<Review[]> {
+    return db.select().from(reviews).where(eq(reviews.reviewedId, sellerId));
+  }
+
+  async getSellerAverageRating(sellerId: string): Promise<number> {
+    const result = await db
+      .select({ avgRating: avg(reviews.rating) })
+      .from(reviews)
+      .where(eq(reviews.reviewedId, sellerId));
+    
+    return Number(result[0]?.avgRating || 0);
+  }
+
+  // Wishlist operations
+  async addToWishlist(insertWishlist: InsertWishlist): Promise<Wishlist> {
+    const [wishlistItem] = await db.insert(wishlist).values(insertWishlist).returning();
+    return wishlistItem;
+  }
+
+  async removeFromWishlist(userId: string, productId: string): Promise<boolean> {
+    const result = await db
+      .delete(wishlist)
+      .where(and(eq(wishlist.userId, userId), eq(wishlist.productId, productId)));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async getUserWishlist(userId: string): Promise<ProductWithSeller[]> {
+    const wishlistItems = await db
+      .select()
+      .from(wishlist)
+      .leftJoin(products, eq(wishlist.productId, products.id))
+      .leftJoin(users, eq(products.sellerId, users.id))
+      .where(eq(wishlist.userId, userId));
+
+    const productsWithSeller: ProductWithSeller[] = [];
+    for (const row of wishlistItems) {
+      if (row.users && row.products) {
+        const ratingResult = await db
+          .select({ avgRating: avg(reviews.rating), count: count(reviews.id) })
+          .from(reviews)
+          .where(eq(reviews.reviewedId, row.users.id));
+
+        const avgRating = ratingResult[0]?.avgRating || 0;
+        const reviewCount = ratingResult[0]?.count || 0;
+
+        productsWithSeller.push({
+          ...row.products,
+          seller: row.users,
+          averageRating: Math.round(Number(avgRating) * 10) / 10,
+          reviewCount: Number(reviewCount)
+        });
+      }
+    }
+
+    return productsWithSeller;
+  }
+
+  async isInWishlist(userId: string, productId: string): Promise<boolean> {
+    const [item] = await db
+      .select()
+      .from(wishlist)
+      .where(and(eq(wishlist.userId, userId), eq(wishlist.productId, productId)));
+    return !!item;
+  }
+
+  // Cart operations
+  async addToCart(insertCartItem: InsertCartItem): Promise<CartItem> {
+    // Check if item already exists
+    const [existingItem] = await db
+      .select()
+      .from(cartItems)
+      .where(
+        and(
+          eq(cartItems.userId, insertCartItem.userId),
+          eq(cartItems.productId, insertCartItem.productId),
+          eq(cartItems.size, insertCartItem.size || "")
+        )
+      );
+
+    if (existingItem) {
+      // Update existing item
+      const newQuantity = Math.min(10, existingItem.quantity + (insertCartItem.quantity || 1));
+      const [updated] = await db
+        .update(cartItems)
+        .set({ quantity: newQuantity })
+        .where(eq(cartItems.id, existingItem.id))
+        .returning();
+      return updated;
+    } else {
+      // Create new item
+      const [cartItem] = await db.insert(cartItems).values({
+        ...insertCartItem,
+        quantity: Math.max(1, Math.min(10, insertCartItem.quantity || 1))
+      }).returning();
+      return cartItem;
+    }
+  }
+
+  async updateCartItem(userId: string, productId: string, size: string, updates: { quantity?: number }): Promise<CartItem | undefined> {
+    if (updates.quantity !== undefined) {
+      const quantity = Math.max(1, Math.min(10, updates.quantity));
+      const [cartItem] = await db
+        .update(cartItems)
+        .set({ quantity })
+        .where(
+          and(
+            eq(cartItems.userId, userId),
+            eq(cartItems.productId, productId),
+            eq(cartItems.size, size)
+          )
+        )
+        .returning();
+      return cartItem || undefined;
+    }
+    return undefined;
+  }
+
+  async removeFromCart(userId: string, productId: string, size: string): Promise<boolean> {
+    const result = await db
+      .delete(cartItems)
+      .where(
+        and(
+          eq(cartItems.userId, userId),
+          eq(cartItems.productId, productId),
+          eq(cartItems.size, size)
+        )
+      );
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async clearCart(userId: string): Promise<boolean> {
+    const result = await db.delete(cartItems).where(eq(cartItems.userId, userId));
+    return (result.rowCount ?? 0) >= 0;
+  }
+
+  async getCart(userId: string): Promise<CartItemWithProduct[]> {
+    const cartList = await db
+      .select()
+      .from(cartItems)
+      .leftJoin(products, eq(cartItems.productId, products.id))
+      .leftJoin(users, eq(products.sellerId, users.id))
+      .where(eq(cartItems.userId, userId));
+
+    const cartWithProducts: CartItemWithProduct[] = [];
+    for (const row of cartList) {
+      if (row.users && row.products && row.cart_items) {
+        const ratingResult = await db
+          .select({ avgRating: avg(reviews.rating), count: count(reviews.id) })
+          .from(reviews)
+          .where(eq(reviews.reviewedId, row.users.id));
+
+        const avgRating = ratingResult[0]?.avgRating || 0;
+        const reviewCount = ratingResult[0]?.count || 0;
+
+        cartWithProducts.push({
+          ...row.cart_items,
+          product: {
+            ...row.products,
+            seller: row.users,
+            averageRating: Math.round(Number(avgRating) * 10) / 10,
+            reviewCount: Number(reviewCount)
+          }
+        });
+      }
+    }
+
+    return cartWithProducts;
+  }
+
+  // Report operations
+  async createReport(insertReport: InsertReport): Promise<Report> {
+    const [report] = await db.insert(reports).values(insertReport).returning();
+    return report;
+  }
+
+  async getReports(status?: string): Promise<Report[]> {
+    if (status) {
+      return db.select().from(reports).where(eq(reports.status, status)).orderBy(desc(reports.createdAt));
+    }
+    return db.select().from(reports).orderBy(desc(reports.createdAt));
+  }
+
+  async updateReportStatus(id: string, status: string): Promise<boolean> {
+    const result = await db
+      .update(reports)
+      .set({ status })
+      .where(eq(reports.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+}
+
+export const storage = new DatabaseStorage();

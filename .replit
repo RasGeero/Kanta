@@ -14,7 +14,7 @@ run = ["npm", "run", "start"]
 PORT = "5000"
 
 [agent]
-integrations = ["javascript_mem_db:1.0.0"]
+integrations = ["javascript_mem_db:1.0.0", "javascript_database:1.0.0"]
 expertMode = true
 
 [workflows]
@@ -46,5 +46,5 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 42625
+localPort = 44769
 externalPort = 3000

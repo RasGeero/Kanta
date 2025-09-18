@@ -30,7 +30,7 @@ export const products = pgTable("products", {
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   originalImage: text("original_image"), // Original uploaded image
   processedImage: text("processed_image"), // AI-processed image with mannequin
-  images: json("images").$type<string[]>().default([]), // Additional images
+  images: json("images").$type<string[]>().notNull().default(sql`'[]'::json`), // Additional images
   isActive: boolean("is_active").default(true),
   isApproved: boolean("is_approved").default(false),
   views: integer("views").default(0),
