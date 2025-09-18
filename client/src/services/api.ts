@@ -33,9 +33,39 @@ export const userApi = {
     return response.json();
   },
 
+  logout: async (): Promise<void> => {
+    await apiRequest('POST', '/api/auth/logout');
+  },
+
+  getCurrentUser: async (): Promise<User> => {
+    const response = await apiRequest('GET', '/api/auth/me');
+    return response.json();
+  },
+
   getUser: async (id: string): Promise<User> => {
     const response = await apiRequest('GET', `/api/users/${id}`);
     return response.json();
+  },
+
+  updateUser: async (id: string, userData: { firstName?: string; lastName?: string; email?: string; phone?: string }): Promise<User> => {
+    const response = await apiRequest('PUT', `/api/users/${id}`, userData);
+    return response.json();
+  },
+
+  changePassword: async (id: string, currentPassword: string, newPassword: string): Promise<void> => {
+    await apiRequest('PUT', `/api/users/${id}/password`, {
+      currentPassword,
+      newPassword,
+    });
+  },
+
+  downloadUserData: async (id: string): Promise<any> => {
+    const response = await apiRequest('GET', `/api/users/${id}/data`);
+    return response.json();
+  },
+
+  deleteAccount: async (id: string): Promise<void> => {
+    await apiRequest('DELETE', `/api/users/${id}`);
   },
 
   getAllUsers: async (): Promise<User[]> => {

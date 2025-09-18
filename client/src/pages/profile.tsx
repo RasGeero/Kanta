@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { User, Package, Heart, MessageCircle, Settings, Edit, LogOut } from "lucide-react";
+import { User, Package, Heart, MessageCircle, Settings, Edit, LogOut, Shield, Download, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { orderApi, wishlistApi, messageApi, userApi } from "@/services/api";
+import { useAuth } from "@/contexts/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import type { OrderWithDetails, ProductWithSeller } from "@shared/schema";
@@ -23,30 +24,58 @@ const profileFormSchema = z.object({
   phone: z.string().min(10, "Phone number must be at least 10 digits").optional(),
 });
 
+const passwordFormSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(6, "Please confirm your password"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
 type ProfileFormData = z.infer<typeof profileFormSchema>;
+type PasswordFormData = z.infer<typeof passwordFormSchema>;
 
 export default function Profile() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isDownloadingData, setIsDownloadingData] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user, isAuthenticated, logout } = useAuth();
 
-  // Mock user ID - in production, get from authentication
-  const userId = "buyer-id-placeholder";
+  if (!isAuthenticated || !user) {
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <p className="text-muted-foreground">Please log in to view your profile.</p>
+      </div>
+    );
+  }
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
-      firstName: "Akosua",
-      lastName: "Osei",
-      email: "akosua@gmail.com",
-      phone: "+233201234567",
+      firstName: user.firstName || "",
+      lastName: user.lastName || "",
+      email: user.email || "",
+      phone: user.phone || "",
+    },
+  });
+
+  const passwordForm = useForm<PasswordFormData>({
+    resolver: zodResolver(passwordFormSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
     },
   });
 
   // Fetch user orders
   const { data: orders = [], isLoading: isLoadingOrders } = useQuery({
-    queryKey: ['/api/buyers', userId, 'orders'],
-    queryFn: () => orderApi.getOrdersByBuyer(userId),
+    queryKey: ['/api/buyers', user.id, 'orders'],
+    queryFn: () => orderApi.getOrdersByBuyer(user.id),
   });
 
   // Fetch user wishlist
@@ -57,29 +86,27 @@ export default function Profile() {
 
   // Fetch unread messages count
   const { data: unreadCount = 0 } = useQuery({
-    queryKey: ['/api/users', userId, 'unread-messages'],
-    queryFn: () => messageApi.getUnreadCount(userId),
+    queryKey: ['/api/users', user.id, 'unread-messages'],
+    queryFn: () => messageApi.getUnreadCount(user.id),
   });
 
   // Update profile mutation
   const updateProfileMutation = useMutation({
-    mutationFn: async (data: ProfileFormData) => {
-      // In production, this would call userApi.updateUser
-      console.log('Updating profile:', data);
-      return data;
-    },
+    mutationFn: (data: ProfileFormData) => userApi.updateUser(user.id, data),
     onSuccess: () => {
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully.",
       });
       setIsEditingProfile(false);
-      queryClient.invalidateQueries({ queryKey: ['/api/users', userId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/me'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/users', user.id] });
     },
-    onError: () => {
+    onError: (error: any) => {
+      const message = error?.message || 'Failed to update profile. Please try again.';
       toast({
         title: "Error",
-        description: "Failed to update profile. Please try again.",
+        description: message,
         variant: "destructive",
       });
     },
@@ -108,8 +135,118 @@ export default function Profile() {
     updateProfileMutation.mutate(data);
   };
 
+  // Password change mutation
+  const changePasswordMutation = useMutation({
+    mutationFn: (data: PasswordFormData) => 
+      userApi.changePassword(user.id, data.currentPassword, data.newPassword),
+    onSuccess: () => {
+      toast({
+        title: "Password changed",
+        description: "Your password has been updated successfully.",
+      });
+      setIsChangingPassword(false);
+      passwordForm.reset();
+    },
+    onError: (error: any) => {
+      const message = error?.message || 'Failed to change password. Please try again.';
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Download user data mutation
+  const downloadDataMutation = useMutation({
+    mutationFn: () => userApi.downloadUserData(user.id),
+    onSuccess: (data) => {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `kantamanto-user-data-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Data downloaded",
+        description: "Your account data has been downloaded successfully.",
+      });
+    },
+    onError: (error: any) => {
+      const message = error?.message || 'Failed to download data. Please try again.';
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete account mutation
+  const deleteAccountMutation = useMutation({
+    mutationFn: () => userApi.deleteAccount(user.id),
+    onSuccess: () => {
+      toast({
+        title: "Account deactivated",
+        description: "Your account has been deactivated successfully.",
+      });
+      logout();
+    },
+    onError: (error: any) => {
+      const message = error?.message || 'Failed to delete account. Please try again.';
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Logout mutation
+  const logoutMutation = useMutation({
+    mutationFn: logout,
+    onSuccess: () => {
+      toast({
+        title: "Logged out",
+        description: "You have been logged out successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: "Failed to log out. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleRemoveFromWishlist = (productId: string) => {
     removeFromWishlistMutation.mutate(productId);
+  };
+
+  const onPasswordSubmit = (data: PasswordFormData) => {
+    changePasswordMutation.mutate(data);
+  };
+
+  const handleDownloadData = () => {
+    setIsDownloadingData(true);
+    downloadDataMutation.mutate();
+    setIsDownloadingData(false);
+  };
+
+  const handleDeleteAccount = () => {
+    if (window.confirm('Are you sure you want to delete your account? This action cannot be undone.')) {
+      deleteAccountMutation.mutate();
+    }
+    setIsDeletingAccount(false);
+  };
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
   };
 
   const getOrderStatusColor = (status: string) => {
@@ -470,7 +607,85 @@ export default function Profile() {
                     <h4 className="font-medium">Change Password</h4>
                     <p className="text-sm text-muted-foreground">Update your account password</p>
                   </div>
-                  <Button variant="outline" size="sm">Change</Button>
+                  <Dialog open={isChangingPassword} onOpenChange={setIsChangingPassword}>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm" data-testid="change-password-button">
+                        <Shield className="h-4 w-4 mr-2" />
+                        Change
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Change Password</DialogTitle>
+                      </DialogHeader>
+                      <Form {...passwordForm}>
+                        <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+                          <FormField
+                            control={passwordForm.control}
+                            name="currentPassword"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Current Password</FormLabel>
+                                <FormControl>
+                                  <Input type="password" {...field} data-testid="current-password-input" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={passwordForm.control}
+                            name="newPassword"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>New Password</FormLabel>
+                                <FormControl>
+                                  <Input type="password" {...field} data-testid="new-password-input" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <FormField
+                            control={passwordForm.control}
+                            name="confirmPassword"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Confirm New Password</FormLabel>
+                                <FormControl>
+                                  <Input type="password" {...field} data-testid="confirm-password-input" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          <div className="flex justify-end space-x-4">
+                            <Button 
+                              type="button" 
+                              variant="outline" 
+                              onClick={() => {
+                                setIsChangingPassword(false);
+                                passwordForm.reset();
+                              }}
+                              data-testid="cancel-password-button"
+                            >
+                              Cancel
+                            </Button>
+                            <Button 
+                              type="submit" 
+                              disabled={changePasswordMutation.isPending}
+                              data-testid="save-password-button"
+                            >
+                              {changePasswordMutation.isPending ? "Changing..." : "Change Password"}
+                            </Button>
+                          </div>
+                        </form>
+                      </Form>
+                    </DialogContent>
+                  </Dialog>
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -493,7 +708,16 @@ export default function Profile() {
                     <h4 className="font-medium">Download Your Data</h4>
                     <p className="text-sm text-muted-foreground">Get a copy of your account data</p>
                   </div>
-                  <Button variant="outline" size="sm">Download</Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleDownloadData}
+                    disabled={downloadDataMutation.isPending}
+                    data-testid="download-data-button"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    {downloadDataMutation.isPending ? "Downloading..." : "Download"}
+                  </Button>
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -501,13 +725,28 @@ export default function Profile() {
                     <h4 className="font-medium text-destructive">Delete Account</h4>
                     <p className="text-sm text-muted-foreground">Permanently delete your account and data</p>
                   </div>
-                  <Button variant="destructive" size="sm">Delete</Button>
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={handleDeleteAccount}
+                    disabled={deleteAccountMutation.isPending}
+                    data-testid="delete-account-button"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    {deleteAccountMutation.isPending ? "Deleting..." : "Delete"}
+                  </Button>
                 </div>
                 
                 <div className="pt-4 border-t">
-                  <Button variant="outline" className="w-full" data-testid="logout-button">
+                  <Button 
+                    variant="outline" 
+                    className="w-full" 
+                    onClick={handleLogout}
+                    disabled={logoutMutation.isPending}
+                    data-testid="logout-button"
+                  >
                     <LogOut className="h-4 w-4 mr-2" />
-                    Log Out
+                    {logoutMutation.isPending ? "Logging out..." : "Log Out"}
                   </Button>
                 </div>
               </CardContent>
