@@ -4,7 +4,7 @@ import { Link } from "wouter";
 import { cartApi, wishlistApi } from "@/services/api";
 import { useAuth } from "@/contexts/auth-context";
 import { queryClient } from "@/lib/queryClient";
-import { Search, ShoppingBag, Store, ArrowRight, DollarSign, Eye, Package, Star } from "lucide-react";
+import { Search, ShoppingBag, Store, ArrowRight, DollarSign, Eye, Package, Star, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
