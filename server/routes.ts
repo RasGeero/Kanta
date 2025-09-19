@@ -412,25 +412,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const productData = insertProductSchema.parse(req.body);
       
+      let originalImageUrl = productData.originalImage;
       let processedImageUrl = productData.originalImage;
       
       if (req.file) {
-        // Process image with sharp
+        // Process image with sharp for basic optimization
         const processedImage = await sharp(req.file.buffer)
           .resize(800, 1000, { fit: 'cover' })
           .jpeg({ quality: 90 })
           .toBuffer();
 
-        // In production, save to cloud storage
-        // For now, we'll use a placeholder URL
-        processedImageUrl = `https://processed-images.kantamanto.com/${Date.now()}.jpg`;
-        
-        // Simulate AI processing with Remove.bg and Fashn.ai
-        await processAIImage(processedImageUrl);
+        // Create base64 data URL for original image
+        const base64Original = processedImage.toString('base64');
+        originalImageUrl = `data:image/jpeg;base64,${base64Original}`;
+
+        // Perform AI processing (background removal + virtual try-on)
+        try {
+          console.log('Starting AI processing for product creation...');
+          
+          // Step 1: Remove background
+          const formData = new FormData();
+          const fileBlob = new Blob([req.file.buffer], { type: req.file.mimetype });
+          formData.append('image_file', fileBlob, req.file.originalname || 'image.jpg');
+          formData.append('size', 'auto');
+          formData.append('format', 'png');
+
+          const removeBgResponse = await fetch('https://api.remove.bg/v1.0/removebg', {
+            method: 'POST',
+            headers: {
+              'X-Api-Key': process.env.REMOVE_BG_API_KEY!,
+            },
+            body: formData,
+          });
+
+          if (removeBgResponse.ok) {
+            const processedBuffer = await removeBgResponse.arrayBuffer();
+            const base64BgRemoved = Buffer.from(processedBuffer).toString('base64');
+            const bgRemovedUrl = `data:image/png;base64,${base64BgRemoved}`;
+            
+            console.log('Background removal successful');
+            
+            // Step 2: Apply virtual try-on with Fashn.ai if available
+            if (process.env.FASHN_AI_API_KEY && process.env.FASHN_AI_API_KEY.trim() !== '') {
+              try {
+                const garmentType = productData.category || 'other';
+                const mannequinGender = productData.gender || 'unisex';
+                
+                // Call Fashn.ai virtual try-on directly
+                const fashnResult = await processVirtualTryOn(bgRemovedUrl, garmentType, mannequinGender);
+                
+                if (fashnResult.success && fashnResult.processedImageUrl !== bgRemovedUrl) {
+                  processedImageUrl = fashnResult.processedImageUrl;
+                  console.log('Virtual try-on completed successfully');
+                } else {
+                  processedImageUrl = bgRemovedUrl;
+                  console.log('Virtual try-on fallback to background removal:', fashnResult.message);
+                }
+              } catch (fashnError) {
+                console.error('Virtual try-on error:', fashnError);
+                processedImageUrl = bgRemovedUrl;
+              }
+            } else {
+              processedImageUrl = bgRemovedUrl;
+              console.log('No Fashn.ai key, using background removal only');
+            }
+          } else {
+            console.error('Background removal failed, using original image');
+            processedImageUrl = originalImageUrl;
+          }
+        } catch (aiError) {
+          console.error('AI processing failed:', aiError);
+          processedImageUrl = originalImageUrl;
+        }
       }
 
       const product = await storage.createProduct({
         ...productData,
+        originalImage: originalImageUrl,
         processedImage: processedImageUrl,
       });
 
@@ -439,6 +497,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
+      console.error('Product creation error:', error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -1087,44 +1146,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Placeholder for actual Fashn.ai implementation
+      // Implement actual Fashn.ai API call
       console.log('Mannequin overlay requested:', { imageUrl, garmentType, mannequinGender });
       
-      // TODO: In production, implement actual Fashn.ai API call:
-      /*
-      const response = await fetch('https://api.fashn.ai/v1/try-on', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.FASHN_AI_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          garment_image_url: imageUrl,
-          mannequin_type: mannequinGender,
-          garment_category: garmentType,
-          output_format: 'jpg',
-          quality: 'high',
-        }),
-      });
+      try {
+        // Create default model image (mannequin) - in production this would be from a mannequin library
+        const defaultMannequinUrl = "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=600&fit=crop&crop=face"; // Placeholder male mannequin
+        const modelImageUrl = mannequinGender === 'female' 
+          ? "https://images.unsplash.com/photo-1551836022-8b2858c9c69b?w=400&h=600&fit=crop&crop=face" 
+          : defaultMannequinUrl;
 
-      if (!response.ok) {
-        throw new Error('Fashn.ai API request failed');
+        // Step 1: Submit job to Fashn.ai
+        const runResponse = await fetch('https://api.fashn.ai/v1/run', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.FASHN_AI_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model_name: "tryon-v1.6",
+            inputs: {
+              model_image: modelImageUrl,
+              garment_image: imageUrl,
+              category: garmentType || "other"
+            }
+          }),
+        });
+
+        if (!runResponse.ok) {
+          const errorText = await runResponse.text();
+          console.error('Fashn.ai run API error:', errorText);
+          throw new Error(`Fashn.ai API request failed: ${runResponse.status}`);
+        }
+
+        const runResult = await runResponse.json();
+        const predictionId = runResult.id;
+
+        if (!predictionId) {
+          throw new Error('No prediction ID returned from Fashn.ai');
+        }
+
+        console.log('Fashn.ai job submitted:', predictionId);
+
+        // Step 2: Poll for completion (with timeout)
+        const maxAttempts = 15; // 15 attempts * 4 seconds = 60 seconds max
+        let attempts = 0;
+        let finalResult = null;
+
+        while (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 4000)); // Wait 4 seconds between polls
+          attempts++;
+
+          const statusResponse = await fetch(`https://api.fashn.ai/v1/status/${predictionId}`, {
+            headers: {
+              'Authorization': `Bearer ${process.env.FASHN_AI_API_KEY}`,
+            },
+          });
+
+          if (!statusResponse.ok) {
+            console.error('Fashn.ai status check failed:', statusResponse.status);
+            continue;
+          }
+
+          const statusResult = await statusResponse.json();
+          console.log(`Fashn.ai status check ${attempts}:`, statusResult.status);
+
+          if (statusResult.status === 'completed' && statusResult.output && statusResult.output.length > 0) {
+            finalResult = statusResult;
+            break;
+          } else if (statusResult.status === 'failed') {
+            throw new Error(statusResult.error || 'Fashn.ai processing failed');
+          }
+        }
+
+        if (!finalResult) {
+          // Timeout - return background removed image as fallback
+          console.warn('Fashn.ai processing timeout - using fallback');
+          return res.json({
+            success: true,
+            processedImageUrl: imageUrl,
+            message: 'Virtual try-on took too long. Using background-removed image.'
+          });
+        }
+
+        // Success - return the virtual try-on result
+        return res.json({
+          success: true,
+          processedImageUrl: finalResult.output[0],
+          message: 'Virtual try-on completed successfully'
+        });
+
+      } catch (error) {
+        console.error('Fashn.ai processing error:', error);
+        // Fallback to background-removed image
+        return res.json({
+          success: true,
+          processedImageUrl: imageUrl,
+          message: `Virtual try-on failed: ${error instanceof Error ? error.message : 'Unknown error'}. Using background-removed image.`
+        });
       }
-
-      const result = await response.json();
-      return res.json({
-        success: true,
-        processedImageUrl: result.processedImageUrl,
-        message: 'Virtual try-on completed successfully'
-      });
-      */
-      
-      // For now, return the same image (background-removed version) as placeholder
-      res.json({
-        success: true,
-        processedImageUrl: imageUrl,
-        message: 'Mannequin overlay placeholder - background removal completed. Configure Fashn.ai API key for virtual try-on.'
-      });
 
     } catch (error) {
       console.error('Mannequin overlay error:', error);
@@ -1176,6 +1296,123 @@ async function processAIImage(imageUrl: string): Promise<string> {
   } catch (error) {
     console.error('AI processing error:', error);
     return imageUrl; // Return original on error
+  }
+}
+
+// Virtual Try-On Processing Function  
+async function processVirtualTryOn(
+  imageUrl: string, 
+  garmentType: string, 
+  mannequinGender: string
+): Promise<{ success: boolean; processedImageUrl: string; message: string }> {
+  try {
+    // Create default model image (mannequin) - in production this would be from a mannequin library
+    const defaultMannequinUrl = "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=600&fit=crop&crop=face"; // Placeholder male mannequin
+    const modelImageUrl = mannequinGender === 'female' 
+      ? "https://images.unsplash.com/photo-1551836022-8b2858c9c69b?w=400&h=600&fit=crop&crop=face" 
+      : defaultMannequinUrl;
+
+    // Convert data URL to buffer if needed
+    let garmentImageUrl = imageUrl;
+    if (imageUrl.startsWith('data:image/')) {
+      try {
+        // For now, use the data URL directly - Fashn.ai may accept it
+        // In production, you'd upload to cloud storage and get a public URL
+        garmentImageUrl = imageUrl;
+      } catch (error) {
+        console.warn('Could not process data URL for Fashn.ai:', error);
+        garmentImageUrl = imageUrl;
+      }
+    }
+
+    // Step 1: Submit job to Fashn.ai
+    const runResponse = await fetch('https://api.fashn.ai/v1/run', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.FASHN_AI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model_name: "tryon-v1.6",
+        inputs: {
+          model_image: modelImageUrl,
+          garment_image: garmentImageUrl,
+          category: garmentType || "other"
+        }
+      }),
+    });
+
+    if (!runResponse.ok) {
+      const errorText = await runResponse.text();
+      console.error('Fashn.ai run API error:', errorText);
+      throw new Error(`Fashn.ai API request failed: ${runResponse.status}`);
+    }
+
+    const runResult = await runResponse.json();
+    const predictionId = runResult.id;
+
+    if (!predictionId) {
+      throw new Error('No prediction ID returned from Fashn.ai');
+    }
+
+    console.log('Fashn.ai job submitted:', predictionId);
+
+    // Step 2: Poll for completion (with timeout)
+    const maxAttempts = 15; // 15 attempts * 4 seconds = 60 seconds max
+    let attempts = 0;
+    let finalResult = null;
+
+    while (attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 4000)); // Wait 4 seconds between polls
+      attempts++;
+
+      const statusResponse = await fetch(`https://api.fashn.ai/v1/status/${predictionId}`, {
+        headers: {
+          'Authorization': `Bearer ${process.env.FASHN_AI_API_KEY}`,
+        },
+      });
+
+      if (!statusResponse.ok) {
+        console.error('Fashn.ai status check failed:', statusResponse.status);
+        continue;
+      }
+
+      const statusResult = await statusResponse.json();
+      console.log(`Fashn.ai status check ${attempts}:`, statusResult.status);
+
+      if (statusResult.status === 'completed' && statusResult.output && statusResult.output.length > 0) {
+        finalResult = statusResult;
+        break;
+      } else if (statusResult.status === 'failed') {
+        throw new Error(statusResult.error || 'Fashn.ai processing failed');
+      }
+    }
+
+    if (!finalResult) {
+      // Timeout - return background removed image as fallback
+      console.warn('Fashn.ai processing timeout - using fallback');
+      return {
+        success: true,
+        processedImageUrl: imageUrl,
+        message: 'Virtual try-on took too long. Using background-removed image.'
+      };
+    }
+
+    // Success - return the virtual try-on result
+    return {
+      success: true,
+      processedImageUrl: finalResult.output[0],
+      message: 'Virtual try-on completed successfully'
+    };
+
+  } catch (error) {
+    console.error('Fashn.ai processing error:', error);
+    // Fallback to background-removed image
+    return {
+      success: true,
+      processedImageUrl: imageUrl,
+      message: `Virtual try-on failed: ${error instanceof Error ? error.message : 'Unknown error'}. Using background-removed image.`
+    };
   }
 }
 

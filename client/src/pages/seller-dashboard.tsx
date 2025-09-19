@@ -14,7 +14,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { productApi, orderApi } from "@/services/api";
-import { aiProcessing } from "@/services/ai-processing";
 import { useToast } from "@/hooks/use-toast";
 import { insertProductSchema } from "@shared/schema";
 import { z } from "zod";
@@ -101,34 +100,21 @@ export default function SellerDashboard() {
 
     setIsProcessingImage(true);
     try {
-      const category = form.getValues('category');
-      const gender = form.getValues('gender');
+      console.log('Image uploaded:', { fileName: file.name, size: file.size });
 
-      console.log('Starting AI processing for:', { fileName: file.name, size: file.size, category, gender });
-
-      const result = await aiProcessing.processProductImage(file, category || '', gender || '');
-
-      console.log('AI processing result:', result);
-
-      // Don't store blob URLs - these will be handled during form submission
-      // Store the processed image URL only if it's a data URL (base64) or server URL
-      if (result.processedImageUrl && !result.processedImageUrl.startsWith('blob:')) {
-        form.setValue('processedImage', result.processedImageUrl);
-      }
-      
-      // Keep the original file for upload
+      // Store the image file for backend processing
       form.setValue('image', file);
 
       toast({
-        title: result.success ? "✨ AI processing completed!" : "⚠️ Processing completed with warnings",
-        description: result.message,
-        duration: 5000,
+        title: "✅ Image uploaded successfully",
+        description: "AI processing will happen when you submit the product.",
+        duration: 3000,
       });
     } catch (error) {
-      console.error('Image processing error:', error);
+      console.error('Image upload error:', error);
       toast({
-        title: "❌ Image processing failed",
-        description: error instanceof Error ? error.message : "Using original image. You can try uploading again.",
+        title: "❌ Image upload failed",
+        description: error instanceof Error ? error.message : "Please try uploading again.",
         variant: "destructive",
       });
     } finally {
@@ -474,7 +460,14 @@ export default function SellerDashboard() {
                     disabled={createProductMutation.isPending || isProcessingImage}
                     data-testid="submit-product-button"
                   >
-                    {createProductMutation.isPending ? "Adding..." : "Add Product"}
+                    {createProductMutation.isPending ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Adding with AI...
+                      </>
+                    ) : (
+                      "Add Product"
+                    )}
                   </Button>
                 </div>
               </form>
