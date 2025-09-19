@@ -1098,6 +1098,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test endpoint for AI functionality
+  app.get("/api/ai/test", async (req, res) => {
+    try {
+      const removeBgApiKey = process.env.REMOVE_BG_API_KEY;
+      const fashnApiKey = process.env.FASHN_AI_API_KEY;
+      
+      res.json({
+        status: "ok",
+        removeBgConfigured: !!removeBgApiKey,
+        fashnConfigured: !!fashnApiKey,
+        removeBgKeyLength: removeBgApiKey ? removeBgApiKey.length : 0,
+        message: "AI processing endpoints are ready"
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Test failed" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

@@ -104,19 +104,25 @@ export default function SellerDashboard() {
       const category = form.getValues('category');
       const gender = form.getValues('gender');
 
+      console.log('Starting AI processing for:', { fileName: file.name, size: file.size, category, gender });
+
       const result = await aiProcessing.processProductImage(file, category || '', gender || '');
+
+      console.log('AI processing result:', result);
 
       form.setValue('originalImage', result.originalImageUrl);
       form.setValue('processedImage', result.processedImageUrl || result.originalImageUrl);
 
       toast({
-        title: result.success ? "AI processing completed" : "Processing completed with warnings",
+        title: result.success ? "✨ AI processing completed!" : "⚠️ Processing completed with warnings",
         description: result.message,
+        duration: 5000,
       });
     } catch (error) {
+      console.error('Image processing error:', error);
       toast({
-        title: "Image processing failed",
-        description: "Using original image. You can try uploading again.",
+        title: "❌ Image processing failed",
+        description: error instanceof Error ? error.message : "Using original image. You can try uploading again.",
         variant: "destructive",
       });
     } finally {
@@ -439,7 +445,10 @@ export default function SellerDashboard() {
                         </Button>
                       </label>
                       {isProcessingImage && (
-                        <p className="text-sm text-primary">Processing image with AI...</p>
+                        <div className="flex items-center justify-center space-x-2 mt-4">
+                          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                          <p className="text-sm text-primary">Processing image with AI...</p>
+                        </div>
                       )}
                     </div>
                   </div>
