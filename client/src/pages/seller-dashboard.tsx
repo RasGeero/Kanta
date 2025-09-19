@@ -110,8 +110,14 @@ export default function SellerDashboard() {
 
       console.log('AI processing result:', result);
 
-      form.setValue('originalImage', result.originalImageUrl);
-      form.setValue('processedImage', result.processedImageUrl || result.originalImageUrl);
+      // Don't store blob URLs - these will be handled during form submission
+      // Store the processed image URL only if it's a data URL (base64) or server URL
+      if (result.processedImageUrl && !result.processedImageUrl.startsWith('blob:')) {
+        form.setValue('processedImage', result.processedImageUrl);
+      }
+      
+      // Keep the original file for upload
+      form.setValue('image', file);
 
       toast({
         title: result.success ? "✨ AI processing completed!" : "⚠️ Processing completed with warnings",

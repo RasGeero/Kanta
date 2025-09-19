@@ -26,10 +26,20 @@ export const aiProcessing = {
         method: 'POST',
         body: formData,
       });
+
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Server error - invalid response format');
+      }
       
       const result = await response.json();
       
       if (!response.ok) {
+        throw new Error(result.message || 'Background removal failed');
+      }
+
+      if (!result.success) {
         throw new Error(result.message || 'Background removal failed');
       }
       
@@ -78,16 +88,28 @@ export const aiProcessing = {
         }),
       });
 
-      const result = await response.json();
-      
-      if (!response.ok) {
-        // If Fashn.ai is not available, return background-removed image as success
-        console.warn('Fashn.ai API not available:', result.message);
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.warn('Mannequin overlay API returned non-JSON response');
         return {
           success: true,
           processedImageUrl: backgroundRemovedImageUrl,
           originalImageUrl: backgroundRemovedImageUrl,
-          message: 'Background removal completed. Mannequin overlay not available - configure Fashn.ai API key for virtual try-on.',
+          message: 'Background removal completed. Virtual try-on service temporarily unavailable.',
+        };
+      }
+
+      const result = await response.json();
+      
+      // Always treat mannequin overlay as optional - if it fails, return background-removed image
+      if (!response.ok || !result.success) {
+        console.warn('Mannequin overlay failed:', result.message);
+        return {
+          success: true,
+          processedImageUrl: backgroundRemovedImageUrl,
+          originalImageUrl: backgroundRemovedImageUrl,
+          message: result.message || 'Background removal completed. Virtual try-on temporarily unavailable.',
         };
       }
       
