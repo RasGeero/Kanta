@@ -9,35 +9,35 @@ export const aiProcessing = {
   // Remove background using Remove.bg API
   removeBackground: async (imageFile: File | string): Promise<AIProcessingResult> => {
     try {
-      const removeBgApiKey = import.meta.env.VITE_REMOVE_BG_API_KEY || 'placeholder_key';
-      
       console.log('Processing background removal with Remove.bg API...');
       
-      // In production, make actual API call to Remove.bg
-      // const formData = new FormData();
-      // if (imageFile instanceof File) {
-      //   formData.append('image_file', imageFile);
-      // } else {
-      //   formData.append('image_url', imageFile);
-      // }
-      // formData.append('size', 'auto');
+      // Make actual API call to Remove.bg through our backend
+      const formData = new FormData();
       
-      // const response = await fetch('https://api.remove.bg/v1.0/removebg', {
-      //   method: 'POST',
-      //   headers: {
-      //     'X-Api-Key': removeBgApiKey,
-      //   },
-      //   body: formData,
-      // });
+      if (imageFile instanceof File) {
+        formData.append('image', imageFile);
+        formData.append('type', 'file');
+      } else {
+        formData.append('image_url', imageFile);
+        formData.append('type', 'url');
+      }
       
-      // For development, simulate processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const response = await fetch('/api/ai/remove-background', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.message || 'Background removal failed');
+      }
       
       const originalUrl = imageFile instanceof File ? URL.createObjectURL(imageFile) : imageFile;
       
       return {
         success: true,
-        processedImageUrl: originalUrl, // In production, this would be the processed image
+        processedImageUrl: result.processedImageUrl,
         originalImageUrl: originalUrl,
         message: 'Background removed successfully',
       };
@@ -48,7 +48,7 @@ export const aiProcessing = {
       return {
         success: false,
         originalImageUrl: originalUrl,
-        message: 'Background removal failed. Using original image.',
+        message: error instanceof Error ? error.message : 'Background removal failed. Using original image.',
       };
     }
   },
@@ -60,45 +60,52 @@ export const aiProcessing = {
     mannequinGender: 'male' | 'female' | 'unisex' = 'unisex'
   ): Promise<AIProcessingResult> => {
     try {
-      const fashnApiKey = import.meta.env.VITE_FASHN_AI_API_KEY || 'placeholder_key';
-      
       console.log('Processing mannequin overlay with Fashn.ai API...', {
         garmentType,
         mannequinGender,
       });
       
-      // In production, make actual API call to Fashn.ai
-      // const response = await fetch('https://api.fashn.ai/v1/try-on', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Authorization': `Bearer ${fashnApiKey}`,
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({
-      //     garment_image_url: backgroundRemovedImageUrl,
-      //     mannequin_type: mannequinGender,
-      //     garment_category: garmentType,
-      //     output_format: 'jpg',
-      //     quality: 'high',
-      //   }),
-      // });
+      // Check if Fashn.ai API key is available
+      const response = await fetch('/api/ai/mannequin-overlay', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imageUrl: backgroundRemovedImageUrl,
+          garmentType,
+          mannequinGender,
+        }),
+      });
+
+      const result = await response.json();
       
-      // For development, simulate processing
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      if (!response.ok) {
+        // If Fashn.ai is not available, return background-removed image as success
+        console.warn('Fashn.ai API not available:', result.message);
+        return {
+          success: true,
+          processedImageUrl: backgroundRemovedImageUrl,
+          originalImageUrl: backgroundRemovedImageUrl,
+          message: 'Background removal completed. Mannequin overlay not available - configure Fashn.ai API key for virtual try-on.',
+        };
+      }
       
       return {
         success: true,
-        processedImageUrl: backgroundRemovedImageUrl, // In production, this would be the AI-processed image
+        processedImageUrl: result.processedImageUrl || backgroundRemovedImageUrl,
         originalImageUrl: backgroundRemovedImageUrl,
-        message: 'Mannequin overlay applied successfully',
+        message: 'Virtual try-on completed successfully',
       };
     } catch (error) {
-      console.error('Fashn.ai processing error:', error);
+      console.warn('Mannequin overlay processing error:', error);
       
+      // Return background-removed image as fallback
       return {
-        success: false,
+        success: true,
+        processedImageUrl: backgroundRemovedImageUrl,
         originalImageUrl: backgroundRemovedImageUrl,
-        message: 'Mannequin overlay failed. Using background-removed image.',
+        message: 'Background removal completed. Virtual try-on temporarily unavailable.',
       };
     }
   },

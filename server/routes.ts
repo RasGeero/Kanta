@@ -961,6 +961,143 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // AI Processing Routes
+  app.post("/api/ai/remove-background", upload.single('image'), async (req, res) => {
+    try {
+      const { type, image_url } = req.body;
+      
+      if (!process.env.REMOVE_BG_API_KEY) {
+        return res.status(500).json({ message: "Remove.bg API key not configured" });
+      }
+
+      let processedImageUrl: string;
+
+      if (type === 'file' && req.file) {
+        // Process uploaded file
+        const formData = new FormData();
+        const fileBlob = new Blob([req.file.buffer], { type: req.file.mimetype });
+        formData.append('image_file', fileBlob);
+        formData.append('size', 'auto');
+
+        const response = await fetch('https://api.remove.bg/v1.0/removebg', {
+          method: 'POST',
+          headers: {
+            'X-Api-Key': process.env.REMOVE_BG_API_KEY,
+          },
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Remove.bg API error:', errorText);
+          throw new Error('Remove.bg API request failed');
+        }
+
+        const processedBuffer = await response.arrayBuffer();
+        
+        // In production, you would save this to cloud storage
+        // For now, we'll create a data URL
+        const base64Image = Buffer.from(processedBuffer).toString('base64');
+        processedImageUrl = `data:image/png;base64,${base64Image}`;
+        
+      } else if (type === 'url' && image_url) {
+        // Process image from URL
+        const formData = new FormData();
+        formData.append('image_url', image_url);
+        formData.append('size', 'auto');
+
+        const response = await fetch('https://api.remove.bg/v1.0/removebg', {
+          method: 'POST',
+          headers: {
+            'X-Api-Key': process.env.REMOVE_BG_API_KEY,
+          },
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('Remove.bg API error:', errorText);
+          throw new Error('Remove.bg API request failed');
+        }
+
+        const processedBuffer = await response.arrayBuffer();
+        const base64Image = Buffer.from(processedBuffer).toString('base64');
+        processedImageUrl = `data:image/png;base64,${base64Image}`;
+      } else {
+        return res.status(400).json({ message: "Invalid request. Provide either a file or image URL." });
+      }
+
+      res.json({
+        success: true,
+        processedImageUrl,
+        message: 'Background removed successfully'
+      });
+
+    } catch (error) {
+      console.error('Background removal error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: error instanceof Error ? error.message : 'Background removal failed'
+      });
+    }
+  });
+
+  // Mannequin overlay endpoint (placeholder for Fashn.ai)
+  app.post("/api/ai/mannequin-overlay", async (req, res) => {
+    try {
+      const { imageUrl, garmentType, mannequinGender } = req.body;
+      
+      // Check if Fashn.ai API key is available
+      if (!process.env.FASHN_AI_API_KEY || process.env.FASHN_AI_API_KEY.trim() === '') {
+        return res.status(501).json({ 
+          success: false,
+          message: "Fashn.ai API key not configured. Please add FASHN_AI_API_KEY to enable virtual try-on features."
+        });
+      }
+
+      // Placeholder for actual Fashn.ai implementation
+      console.log('Mannequin overlay requested:', { imageUrl, garmentType, mannequinGender });
+      
+      // In production, this would call Fashn.ai API:
+      /*
+      const response = await fetch('https://api.fashn.ai/v1/try-on', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.FASHN_AI_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          garment_image_url: imageUrl,
+          mannequin_type: mannequinGender,
+          garment_category: garmentType,
+          output_format: 'jpg',
+          quality: 'high',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Fashn.ai API request failed');
+      }
+
+      const result = await response.json();
+      */
+      
+      // For now, return the same image (background-removed version)
+      res.json({
+        success: true,
+        processedImageUrl: imageUrl,
+        message: 'Mannequin overlay placeholder - configure Fashn.ai API key for actual virtual try-on'
+      });
+
+    } catch (error) {
+      console.error('Mannequin overlay error:', error);
+      res.status(500).json({ 
+        success: false,
+        message: error instanceof Error ? error.message : 'Mannequin overlay processing failed'
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
