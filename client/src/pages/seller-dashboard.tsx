@@ -330,7 +330,9 @@ export default function SellerDashboard() {
                       </FormItem>
                     )}
                   />
+                </div>
 
+                <div className="grid grid-cols-3 gap-4">
                   <FormField
                     control={form.control}
                     name="color"
@@ -338,7 +340,11 @@ export default function SellerDashboard() {
                       <FormItem>
                         <FormLabel>Color</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., Red, Blue, Multi-color" {...field} value={field.value || ''} data-testid="color-input" />
+                          <Input 
+                            placeholder="e.g., Red, Blue" 
+                            {...field} 
+                            data-testid="color-input"
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
