@@ -128,6 +128,7 @@ export default function AIStudio() {
       formData.append('category', aiResult.suggestedCategory);
       formData.append('condition', 'excellent');
       formData.append('price', '0'); // Will be set by seller later
+      formData.append('status', 'draft'); // Mark as draft for seller to complete later
       formData.append('image', garmentImage);
       
       return productApi.createProduct(formData);

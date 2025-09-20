@@ -31,6 +31,7 @@ export const products = pgTable("products", {
   originalImage: text("original_image"), // Original uploaded image
   processedImage: text("processed_image"), // AI-processed image with mannequin
   images: json("images").$type<string[]>().notNull().default(sql`'[]'::json`), // Additional images
+  status: text("status").notNull().default("draft"), // draft, pending_review, approved, rejected
   isActive: boolean("is_active").default(true),
   isApproved: boolean("is_approved").default(false),
   views: integer("views").default(0),
