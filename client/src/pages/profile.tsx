@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { User, Package, Heart, MessageCircle, Settings, Edit, LogOut, Shield, Download, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,9 +40,20 @@ type PasswordFormData = z.infer<typeof passwordFormSchema>;
 export default function Profile() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [activeTab, setActiveTab] = useState("orders");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user, isAuthenticated, logout } = useAuth();
+  const [location] = useLocation();
+
+  // Handle tab query parameter
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tab = urlParams.get('tab');
+    if (tab && ['orders', 'wishlist', 'settings'].includes(tab)) {
+      setActiveTab(tab);
+    }
+  }, [location]);
 
   if (!isAuthenticated || !user) {
     return (
@@ -433,7 +445,7 @@ export default function Profile() {
       </div>
 
       {/* Main Content Tabs */}
-      <Tabs defaultValue="orders" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="orders" data-testid="orders-tab">Orders</TabsTrigger>
           <TabsTrigger value="wishlist" data-testid="wishlist-tab">Wishlist</TabsTrigger>
@@ -746,6 +758,170 @@ export default function Profile() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Role-specific Settings */}
+            {user.role === 'seller' && (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Business Settings</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Store Information</h4>
+                        <p className="text-sm text-muted-foreground">Manage your store name, description, and policies</p>
+                      </div>
+                      <Button variant="outline" size="sm">Edit Store</Button>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Shipping Settings</h4>
+                        <p className="text-sm text-muted-foreground">Configure delivery options and rates</p>
+                      </div>
+                      <Button variant="outline" size="sm">Configure</Button>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Return Policy</h4>
+                        <p className="text-sm text-muted-foreground">Set your return and refund policies</p>
+                      </div>
+                      <Button variant="outline" size="sm">Manage</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Seller Preferences</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Order Notifications</h4>
+                        <p className="text-sm text-muted-foreground">Get alerts for new orders and order updates</p>
+                      </div>
+                      <Button variant="outline" size="sm">Configure</Button>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Performance Reports</h4>
+                        <p className="text-sm text-muted-foreground">Receive weekly sales and performance summaries</p>
+                      </div>
+                      <Button variant="outline" size="sm">Enable</Button>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Inventory Alerts</h4>
+                        <p className="text-sm text-muted-foreground">Get notified when items are low in stock</p>
+                      </div>
+                      <Button variant="outline" size="sm">Set Alerts</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Payment & Finance</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Payment Methods</h4>
+                        <p className="text-sm text-muted-foreground">Manage how you receive payments</p>
+                      </div>
+                      <Button variant="outline" size="sm">Manage</Button>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Tax Information</h4>
+                        <p className="text-sm text-muted-foreground">Update your tax details and VAT settings</p>
+                      </div>
+                      <Button variant="outline" size="sm">Update</Button>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Commission Settings</h4>
+                        <p className="text-sm text-muted-foreground">View platform fees and commission structure</p>
+                      </div>
+                      <Button variant="outline" size="sm">View Details</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
+
+            {user.role === 'buyer' && (
+              <>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Shopping Preferences</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Default Payment Method</h4>
+                        <p className="text-sm text-muted-foreground">Set your preferred payment option</p>
+                      </div>
+                      <Button variant="outline" size="sm">Manage</Button>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Shipping Addresses</h4>
+                        <p className="text-sm text-muted-foreground">Manage your delivery addresses</p>
+                      </div>
+                      <Button variant="outline" size="sm">Edit Addresses</Button>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Size & Style Preferences</h4>
+                        <p className="text-sm text-muted-foreground">Set your preferred sizes and styles for better recommendations</p>
+                      </div>
+                      <Button variant="outline" size="sm">Set Preferences</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Purchase Notifications</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Order Updates</h4>
+                        <p className="text-sm text-muted-foreground">Get notified about your order status</p>
+                      </div>
+                      <Button variant="outline" size="sm">Configure</Button>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">Price Drop Alerts</h4>
+                        <p className="text-sm text-muted-foreground">Get notified when wishlist items go on sale</p>
+                      </div>
+                      <Button variant="outline" size="sm">Enable</Button>
+                    </div>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium">New Arrivals</h4>
+                        <p className="text-sm text-muted-foreground">Be the first to know about new products in your favorite categories</p>
+                      </div>
+                      <Button variant="outline" size="sm">Subscribe</Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </div>
         </TabsContent>
       </Tabs>

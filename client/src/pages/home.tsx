@@ -10,8 +10,10 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ProductCard from "@/components/product/product-card";
 import ProductModal from "@/components/product/product-modal";
+import AuthModal from "@/components/auth/auth-modal";
 import { productApi } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import type { ProductWithSeller } from "@shared/schema";
@@ -23,8 +25,10 @@ export default function Home() {
   const [maxPrice, setMaxPrice] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<ProductWithSeller | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isUpgradeDialogOpen, setIsUpgradeDialogOpen] = useState(false);
   const { toast } = useToast();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated } = useAuth();
 
   // Fetch featured products
   const { data: featuredProducts = [], isLoading: isLoadingFeatured } = useQuery({
@@ -156,6 +160,19 @@ export default function Home() {
     }
   };
 
+  const handleBecomeSellerCTA = () => {
+    if (!isAuthenticated) {
+      // Open auth modal for registration
+      setIsAuthModalOpen(true);
+    } else if (user?.role === 'buyer') {
+      // Show upgrade dialog for buyers
+      setIsUpgradeDialogOpen(true);
+    } else if (user?.role === 'seller') {
+      // Navigate to seller dashboard for existing sellers
+      window.location.href = '/seller-dashboard';
+    }
+  };
+
   return (
     <div className="min-h-screen">
       {/* Hero Section */}
@@ -185,17 +202,16 @@ export default function Home() {
                     Start Shopping
                   </Button>
                 </Link>
-                <Link href="/seller-dashboard">
-                  <Button 
-                    size="lg" 
-                    variant="outline" 
-                    className="bg-card text-card-foreground border-2 border-card hover:bg-card/90"
-                    data-testid="hero-become-seller"
-                  >
-                    <Store className="mr-2 h-5 w-5" />
-                    Become a Seller
-                  </Button>
-                </Link>
+                <Button 
+                  size="lg" 
+                  variant="outline" 
+                  className="bg-card text-card-foreground border-2 border-card hover:bg-card/90"
+                  data-testid="hero-become-seller"
+                  onClick={handleBecomeSellerCTA}
+                >
+                  <Store className="mr-2 h-5 w-5" />
+                  Become a Seller
+                </Button>
               </div>
             </div>
 
@@ -404,107 +420,145 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Seller Dashboard Preview */}
-      <section className="bg-muted py-16">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-4">Seller Dashboard</h2>
-            <p className="text-xl text-muted-foreground">Manage your thrift business with powerful tools</p>
-          </div>
-
-          <Card className="shadow-lg overflow-hidden">
-            {/* Dashboard Header */}
-            <div className="gradient-bg p-6 text-primary-foreground">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-2xl font-bold">Welcome back, Seller!</h3>
-                  <p className="opacity-90">Your store performance this month</p>
-                </div>
-                <div className="bg-white/20 p-3 rounded-lg">
-                  <Store className="text-2xl h-8 w-8" />
-                </div>
-              </div>
+      {/* Role-based Section */}
+      {user?.role === 'seller' ? (
+        /* Seller Dashboard Preview */
+        <section className="bg-muted py-16">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-4">Your Seller Dashboard</h2>
+              <p className="text-xl text-muted-foreground">Quick access to your business tools</p>
             </div>
 
-            {/* Dashboard Content */}
-            <CardContent className="p-6">
-              {/* Stats Grid */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div className="text-center">
-                  <div className="bg-accent/20 p-4 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
-                    <DollarSign className="h-6 w-6 text-accent" />
+            <Card className="shadow-lg overflow-hidden">
+              {/* Dashboard Header */}
+              <div className="gradient-bg p-6 text-primary-foreground">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-2xl font-bold">Welcome back, Seller!</h3>
+                    <p className="opacity-90">Your store performance this month</p>
                   </div>
-                  <h4 className="text-2xl font-bold text-card-foreground">GH₵2,450</h4>
-                  <p className="text-sm text-muted-foreground">Revenue</p>
-                </div>
-                <div className="text-center">
-                  <div className="bg-secondary/20 p-4 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
-                    <Package className="h-6 w-6 text-secondary" />
+                  <div className="bg-white/20 p-3 rounded-lg">
+                    <Store className="text-2xl h-8 w-8" />
                   </div>
-                  <h4 className="text-2xl font-bold text-card-foreground">47</h4>
-                  <p className="text-sm text-muted-foreground">Orders</p>
-                </div>
-                <div className="text-center">
-                  <div className="bg-primary/20 p-4 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
-                    <Eye className="h-6 w-6 text-primary" />
-                  </div>
-                  <h4 className="text-2xl font-bold text-card-foreground">892</h4>
-                  <p className="text-sm text-muted-foreground">Views</p>
-                </div>
-                <div className="text-center">
-                  <div className="bg-accent/20 p-4 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
-                    <Star className="h-6 w-6 text-accent" />
-                  </div>
-                  <h4 className="text-2xl font-bold text-card-foreground">4.8</h4>
-                  <p className="text-sm text-muted-foreground">Rating</p>
                 </div>
               </div>
 
-              {/* Quick Actions */}
-              <div className="grid md:grid-cols-3 gap-4">
-                <Link href="/seller-dashboard">
-                  <Button 
-                    className="w-full h-auto p-4 text-left justify-start"
-                    data-testid="seller-add-product"
-                  >
-                    <div>
-                      <i className="fas fa-plus text-xl mb-2 block"></i>
-                      <h4 className="font-semibold">Add New Product</h4>
-                      <p className="text-sm opacity-90">Upload and list new items</p>
-                    </div>
-                  </Button>
-                </Link>
-                <Link href="/seller-dashboard">
-                  <Button 
-                    variant="secondary" 
-                    className="w-full h-auto p-4 text-left justify-start"
-                    data-testid="seller-manage-orders"
-                  >
-                    <div>
-                      <i className="fas fa-list-alt text-xl mb-2 block"></i>
-                      <h4 className="font-semibold">Manage Orders</h4>
-                      <p className="text-sm opacity-90">View and update order status</p>
-                    </div>
-                  </Button>
-                </Link>
-                <Link href="/seller-dashboard">
-                  <Button 
-                    variant="outline" 
-                    className="w-full h-auto p-4 text-left justify-start bg-accent text-accent-foreground hover:bg-accent/90"
-                    data-testid="seller-view-analytics"
-                  >
-                    <div>
-                      <i className="fas fa-chart-bar text-xl mb-2 block"></i>
-                      <h4 className="font-semibold">View Analytics</h4>
-                      <p className="text-sm opacity-90">Detailed sales reports</p>
-                    </div>
-                  </Button>
-                </Link>
+              {/* Dashboard Content */}
+              <CardContent className="p-6">
+                {/* Quick Actions */}
+                <div className="grid md:grid-cols-3 gap-4">
+                  <Link href="/seller-dashboard">
+                    <Button 
+                      className="w-full h-auto p-4 text-left justify-start"
+                      data-testid="seller-add-product"
+                    >
+                      <div>
+                        <i className="fas fa-plus text-xl mb-2 block"></i>
+                        <h4 className="font-semibold">Add New Product</h4>
+                        <p className="text-sm opacity-90">Upload and list new items</p>
+                      </div>
+                    </Button>
+                  </Link>
+                  <Link href="/seller-dashboard">
+                    <Button 
+                      variant="secondary" 
+                      className="w-full h-auto p-4 text-left justify-start"
+                      data-testid="seller-manage-orders"
+                    >
+                      <div>
+                        <i className="fas fa-list-alt text-xl mb-2 block"></i>
+                        <h4 className="font-semibold">Manage Orders</h4>
+                        <p className="text-sm opacity-90">View and update order status</p>
+                      </div>
+                    </Button>
+                  </Link>
+                  <Link href="/seller-dashboard">
+                    <Button 
+                      variant="outline" 
+                      className="w-full h-auto p-4 text-left justify-start bg-accent text-accent-foreground hover:bg-accent/90"
+                      data-testid="seller-view-analytics"
+                    >
+                      <div>
+                        <i className="fas fa-chart-bar text-xl mb-2 block"></i>
+                        <h4 className="font-semibold">View Analytics</h4>
+                        <p className="text-sm opacity-90">Detailed sales reports</p>
+                      </div>
+                    </Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+      ) : (
+        /* Become a Seller CTA */
+        <section className="bg-muted py-16">
+          <div className="container mx-auto px-4">
+            <div className="text-center mb-12">
+              <h2 className="text-3xl lg:text-4xl font-bold text-foreground mb-4">Start Selling Today</h2>
+              <p className="text-xl text-muted-foreground">Turn your unwanted items into cash on Ghana's leading thrift marketplace</p>
+            </div>
+
+            <Card className="shadow-lg overflow-hidden">
+              {/* CTA Header */}
+              <div className="gradient-bg p-6 text-primary-foreground">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-2xl font-bold">Join Our Seller Community</h3>
+                    <p className="opacity-90">Start your thrift business journey today</p>
+                  </div>
+                  <div className="bg-white/20 p-3 rounded-lg">
+                    <Store className="text-2xl h-8 w-8" />
+                  </div>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
+
+              {/* Benefits Grid */}
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+                  <div className="text-center">
+                    <div className="bg-accent/20 p-4 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
+                      <DollarSign className="h-6 w-6 text-accent" />
+                    </div>
+                    <h4 className="text-lg font-bold text-card-foreground mb-2">Earn Money</h4>
+                    <p className="text-sm text-muted-foreground">Turn your unused items into cash with our easy-to-use platform</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="bg-secondary/20 p-4 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
+                      <Package className="h-6 w-6 text-secondary" />
+                    </div>
+                    <h4 className="text-lg font-bold text-card-foreground mb-2">Easy Listing</h4>
+                    <p className="text-sm text-muted-foreground">Upload photos and create listings in minutes with our intuitive tools</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="bg-primary/20 p-4 rounded-full w-16 h-16 mx-auto mb-3 flex items-center justify-center">
+                      <Eye className="h-6 w-6 text-primary" />
+                    </div>
+                    <h4 className="text-lg font-bold text-card-foreground mb-2">Wide Reach</h4>
+                    <p className="text-sm text-muted-foreground">Connect with thousands of buyers across Ghana</p>
+                  </div>
+                </div>
+
+                {/* CTA Button */}
+                <div className="text-center">
+                  <Button 
+                    size="lg"
+                    className="px-8 py-4 text-lg"
+                    data-testid="become-seller-cta"
+                    onClick={handleBecomeSellerCTA}
+                  >
+                    {!isAuthenticated ? "Sign Up to Start Selling" : 
+                     user?.role === 'buyer' ? "Upgrade to Seller Account" : 
+                     "Go to Seller Dashboard"}
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+      )}
 
       {/* Product Modal */}
       <ProductModal
@@ -514,6 +568,46 @@ export default function Home() {
         onAddToCart={handleAddToCart}
         onToggleWishlist={handleToggleWishlist}
       />
+
+      {/* Auth Modal for Become a Seller CTA */}
+      <AuthModal 
+        isOpen={isAuthModalOpen} 
+        onClose={() => setIsAuthModalOpen(false)}
+        defaultMode="register"
+      />
+
+      {/* Upgrade Dialog for Buyers */}
+      <Dialog open={isUpgradeDialogOpen} onOpenChange={setIsUpgradeDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Upgrade to Seller Account</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-muted-foreground">
+              Ready to start selling on Kantamanto? Upgrade your account to access seller tools and start listing your products.
+            </p>
+            <div className="flex justify-end space-x-2">
+              <Button 
+                variant="outline" 
+                onClick={() => setIsUpgradeDialogOpen(false)}
+              >
+                Maybe Later
+              </Button>
+              <Button 
+                onClick={() => {
+                  toast({
+                    title: "Coming Soon",
+                    description: "Account upgrade feature is coming soon. Contact support for assistance.",
+                  });
+                  setIsUpgradeDialogOpen(false);
+                }}
+              >
+                Upgrade Now
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -75,9 +75,9 @@ export default function NavigationHeader() {
             <Link 
               href="/search" 
               className="text-sm font-medium hover:text-primary transition-colors"
-              data-testid="nav-browse"
+              data-testid="nav-search"
             >
-              Browse
+              Search
             </Link>
             
             {/* Role-based navigation */}
@@ -119,19 +119,21 @@ export default function NavigationHeader() {
               {/* Cart and Wishlist - available to buyers and sellers for browsing */}
               {isAuthenticated && user?.role !== 'admin' && (
                 <>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="relative"
-                    data-testid="wishlist-button"
-                  >
-                    <Heart className="h-5 w-5" />
-                    {wishlistCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                        {wishlistCount}
-                      </span>
-                    )}
-                  </Button>
+                  <Link href="/profile?tab=wishlist">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="relative"
+                      data-testid="wishlist-button"
+                    >
+                      <Heart className="h-5 w-5" />
+                      {wishlistCount > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                          {wishlistCount}
+                        </span>
+                      )}
+                    </Button>
+                  </Link>
                   <Link href="/cart">
                     <Button
                       variant="ghost"
@@ -231,9 +233,9 @@ export default function NavigationHeader() {
                   href="/search" 
                   className="text-lg font-medium hover:text-primary transition-colors"
                   onClick={() => setIsOpen(false)}
-                  data-testid="mobile-nav-browse"
+                  data-testid="mobile-nav-search"
                 >
-                  Browse
+                  Search
                 </Link>
                 
                 {/* Role-based navigation for mobile */}

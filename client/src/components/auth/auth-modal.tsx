@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import LoginForm from "./login-form";
 import RegisterForm from "./register-form";
@@ -11,6 +11,13 @@ interface AuthModalProps {
 
 export default function AuthModal({ isOpen, onClose, defaultMode = "login" }: AuthModalProps) {
   const [mode, setMode] = useState<"login" | "register">(defaultMode);
+
+  // Reset mode when modal opens or defaultMode changes
+  useEffect(() => {
+    if (isOpen) {
+      setMode(defaultMode);
+    }
+  }, [isOpen, defaultMode]);
 
   const handleSuccess = () => {
     onClose();
