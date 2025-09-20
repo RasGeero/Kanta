@@ -4,8 +4,10 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/auth-context";
+import { SellerRoute, AdminRoute, AuthenticatedRoute } from "@/components/auth/route-protection";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/home";
+import About from "@/pages/about";
 import ProductDetail from "@/pages/product-detail";
 import SellerDashboard from "@/pages/seller-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
@@ -20,13 +22,41 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Home} />
+      <Route path="/about" component={About} />
       <Route path="/product/:id" component={ProductDetail} />
-      <Route path="/seller-dashboard" component={SellerDashboard} />
-      <Route path="/admin" component={AdminDashboard} />
-      <Route path="/checkout" component={Checkout} />
       <Route path="/search" component={Search} />
-      <Route path="/cart" component={Cart} />
-      <Route path="/profile" component={Profile} />
+      
+      {/* Protected Routes */}
+      <Route path="/seller-dashboard">
+        <SellerRoute>
+          <SellerDashboard />
+        </SellerRoute>
+      </Route>
+      
+      <Route path="/admin">
+        <AdminRoute>
+          <AdminDashboard />
+        </AdminRoute>
+      </Route>
+      
+      <Route path="/checkout">
+        <AuthenticatedRoute>
+          <Checkout />
+        </AuthenticatedRoute>
+      </Route>
+      
+      <Route path="/cart">
+        <AuthenticatedRoute>
+          <Cart />
+        </AuthenticatedRoute>
+      </Route>
+      
+      <Route path="/profile">
+        <AuthenticatedRoute>
+          <Profile />
+        </AuthenticatedRoute>
+      </Route>
+      
       <Route component={NotFound} />
     </Switch>
   );

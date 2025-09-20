@@ -79,22 +79,45 @@ export default function NavigationHeader() {
             >
               Browse
             </Link>
+            
+            {/* Role-based navigation */}
+            {user?.role === 'seller' ? (
+              <Link 
+                href="/seller-dashboard" 
+                className="text-sm font-medium hover:text-primary transition-colors"
+                data-testid="nav-seller-dashboard"
+              >
+                Seller Dashboard
+              </Link>
+            ) : user?.role === 'admin' ? (
+              <Link 
+                href="/admin" 
+                className="text-sm font-medium hover:text-primary transition-colors"
+                data-testid="nav-admin-dashboard"
+              >
+                Admin Dashboard
+              </Link>
+            ) : !isAuthenticated ? (
+              <Button 
+                variant="ghost"
+                onClick={() => handleAuthModal("register")}
+                className="text-sm font-medium hover:text-primary transition-colors h-auto p-0"
+                data-testid="nav-become-seller"
+              >
+                Become a Seller
+              </Button>
+            ) : null}
+            
             <Link 
-              href="/seller-dashboard" 
-              className="text-sm font-medium hover:text-primary transition-colors"
-              data-testid="nav-sell"
-            >
-              Sell
-            </Link>
-            <Link 
-              href="/profile" 
+              href="/about" 
               className="text-sm font-medium hover:text-primary transition-colors"
               data-testid="nav-about"
             >
               About
             </Link>
             <div className="flex items-center space-x-2">
-              {isAuthenticated && (
+              {/* Cart and Wishlist - available to buyers and sellers for browsing */}
+              {isAuthenticated && user?.role !== 'admin' && (
                 <>
                   <Button
                     variant="ghost"
@@ -212,37 +235,70 @@ export default function NavigationHeader() {
                 >
                   Browse
                 </Link>
+                
+                {/* Role-based navigation for mobile */}
+                {user?.role === 'seller' && (
+                  <Link 
+                    href="/seller-dashboard" 
+                    className="text-lg font-medium hover:text-primary transition-colors"
+                    onClick={() => setIsOpen(false)}
+                    data-testid="mobile-nav-seller-dashboard"
+                  >
+                    Seller Dashboard
+                  </Link>
+                )}
+                
+                {user?.role === 'admin' && (
+                  <Link 
+                    href="/admin" 
+                    className="text-lg font-medium hover:text-primary transition-colors"
+                    onClick={() => setIsOpen(false)}
+                    data-testid="mobile-nav-admin-dashboard"
+                  >
+                    Admin Dashboard
+                  </Link>
+                )}
+                
+                {!isAuthenticated && (
+                  <Button 
+                    variant="ghost"
+                    onClick={() => {
+                      setIsOpen(false);
+                      handleAuthModal("register");
+                    }}
+                    className="text-lg font-medium hover:text-primary transition-colors h-auto p-0 justify-start"
+                    data-testid="mobile-nav-become-seller"
+                  >
+                    Become a Seller
+                  </Button>
+                )}
+                
                 <Link 
-                  href="/seller-dashboard" 
-                  className="text-lg font-medium hover:text-primary transition-colors"
-                  onClick={() => setIsOpen(false)}
-                  data-testid="mobile-nav-sell"
-                >
-                  Sell
-                </Link>
-                <Link 
-                  href="/profile" 
+                  href="/about" 
                   className="text-lg font-medium hover:text-primary transition-colors"
                   onClick={() => setIsOpen(false)}
                   data-testid="mobile-nav-about"
                 >
                   About
                 </Link>
-                <div className="border-t pt-4">
-                  <Link 
-                    href="/cart" 
-                    className="flex items-center space-x-2 text-lg font-medium hover:text-primary transition-colors"
-                    onClick={() => setIsOpen(false)}
-                    data-testid="mobile-nav-cart"
-                  >
-                    <ShoppingCart className="h-5 w-5" />
-                    <span>Cart{cartCount > 0 ? ` (${cartCount})` : ''}</span>
-                  </Link>
-                  <div className="flex items-center space-x-2 text-lg font-medium hover:text-primary transition-colors mt-2 cursor-pointer">
-                    <Heart className="h-5 w-5" />
-                    <span>Wishlist{wishlistCount > 0 ? ` (${wishlistCount})` : ''}</span>
+                {/* Cart and Wishlist - only for buyers and sellers */}
+                {isAuthenticated && user?.role !== 'admin' && (
+                  <div className="border-t pt-4">
+                    <Link 
+                      href="/cart" 
+                      className="flex items-center space-x-2 text-lg font-medium hover:text-primary transition-colors"
+                      onClick={() => setIsOpen(false)}
+                      data-testid="mobile-nav-cart"
+                    >
+                      <ShoppingCart className="h-5 w-5" />
+                      <span>Cart{cartCount > 0 ? ` (${cartCount})` : ''}</span>
+                    </Link>
+                    <div className="flex items-center space-x-2 text-lg font-medium hover:text-primary transition-colors mt-2 cursor-pointer">
+                      <Heart className="h-5 w-5" />
+                      <span>Wishlist{wishlistCount > 0 ? ` (${wishlistCount})` : ''}</span>
+                    </div>
                   </div>
-                </div>
+                )}
                 
                 <div className="border-t pt-4 space-y-2">
                   {isAuthenticated ? (
