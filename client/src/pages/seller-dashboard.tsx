@@ -240,8 +240,8 @@ export default function SellerDashboard() {
               <DialogTitle>Add New Product</DialogTitle>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <div className="grid md:grid-cols-2 gap-4">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                <div className="grid md:grid-cols-2 gap-3">
                   <FormField
                     control={form.control}
                     name="title"
@@ -332,7 +332,7 @@ export default function SellerDashboard() {
                   />
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-3">
                   <FormField
                     control={form.control}
                     name="color"
@@ -404,7 +404,7 @@ export default function SellerDashboard() {
                       <FormControl>
                         <Textarea 
                           placeholder="Describe your product..." 
-                          rows={3}
+                          rows={2}
                           {...field}
                           value={field.value || ''}
                           data-testid="description-input"
