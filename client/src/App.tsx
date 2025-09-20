@@ -10,6 +10,7 @@ import Home from "@/pages/home";
 import About from "@/pages/about";
 import ProductDetail from "@/pages/product-detail";
 import SellerDashboard from "@/pages/seller-dashboard";
+import AIStudio from "@/pages/ai-studio";
 import AdminDashboard from "@/pages/admin-dashboard";
 import Checkout from "@/pages/checkout";
 import Search from "@/pages/search";
@@ -30,6 +31,12 @@ function Router() {
       <Route path="/seller-dashboard">
         <SellerRoute>
           <SellerDashboard />
+        </SellerRoute>
+      </Route>
+      
+      <Route path="/ai-studio">
+        <SellerRoute>
+          <AIStudio />
         </SellerRoute>
       </Route>
       

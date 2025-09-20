@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Plus, Package, Eye, DollarSign, Star, BarChart3, Upload, Clock, CheckCircle, Truck, ShoppingBag } from "lucide-react";
+import { Plus, Package, Eye, DollarSign, Star, BarChart3, Upload, Clock, CheckCircle, Truck, ShoppingBag, Wand2, Edit3 } from "lucide-react";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -25,12 +26,14 @@ const productFormSchema = insertProductSchema.extend({
 type ProductFormData = z.infer<typeof productFormSchema>;
 
 export default function SellerDashboard() {
+  const [isChoiceModalOpen, setIsChoiceModalOpen] = useState(false);
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [isManageOrdersOpen, setIsManageOrdersOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   // Mock seller ID - in production, get from authentication
   const sellerId = "seller-id-placeholder";
@@ -225,7 +228,8 @@ export default function SellerDashboard() {
 
       {/* Quick Actions */}
       <div className="grid md:grid-cols-3 gap-6 mb-8">
-        <Dialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen}>
+        {/* Choice Modal for Product Creation Method */}
+        <Dialog open={isChoiceModalOpen} onOpenChange={setIsChoiceModalOpen}>
           <DialogTrigger asChild>
             <Card className="cursor-pointer hover:shadow-lg transition-shadow">
               <CardContent className="p-6 text-center">
@@ -235,6 +239,50 @@ export default function SellerDashboard() {
               </CardContent>
             </Card>
           </DialogTrigger>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Choose Product Creation Method</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <Card 
+                className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-primary"
+                onClick={() => {
+                  setIsChoiceModalOpen(false);
+                  setIsAddProductOpen(true);
+                }}
+                data-testid="manual-upload-choice"
+              >
+                <CardContent className="p-6 text-center">
+                  <Edit3 className="h-10 w-10 text-secondary mx-auto mb-3" />
+                  <h4 className="font-semibold text-lg mb-2">Manual Upload</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Upload your product photos and enter details manually
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-primary"
+                onClick={() => {
+                  setIsChoiceModalOpen(false);
+                  setLocation('/ai-studio');
+                }}
+                data-testid="ai-studio-choice"
+              >
+                <CardContent className="p-6 text-center">
+                  <Wand2 className="h-10 w-10 text-primary mx-auto mb-3" />
+                  <h4 className="font-semibold text-lg mb-2">AI Studio</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Generate professional product photos with AI try-on technology
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Manual Product Creation Dialog */}
+        <Dialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Add New Product</DialogTitle>
@@ -343,6 +391,7 @@ export default function SellerDashboard() {
                           <Input 
                             placeholder="e.g., Red, Blue" 
                             {...field} 
+                            value={field.value || ''}
                             data-testid="color-input"
                           />
                         </FormControl>
