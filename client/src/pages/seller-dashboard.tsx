@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Package, Eye, DollarSign, Star, BarChart3, Upload, Clock, CheckCircle, Truck, ShoppingBag, Wand2, Edit3 } from "lucide-react";
 import { useLocation } from "wouter";
@@ -31,6 +31,7 @@ export default function SellerDashboard() {
   const [isProcessingImage, setIsProcessingImage] = useState(false);
   const [isManageOrdersOpen, setIsManageOrdersOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -54,6 +55,61 @@ export default function SellerDashboard() {
       processedImage: "",
     },
   });
+  
+  // Check for AI Studio data on component mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const shouldOpenForm = urlParams.get('openForm') === 'true';
+    
+    if (shouldOpenForm) {
+      const aiStudioData = localStorage.getItem('aiStudioDraft');
+      if (aiStudioData) {
+        try {
+          const data = JSON.parse(aiStudioData);
+          
+          // Pre-fill the form with AI Studio data
+          form.setValue('title', data.title || '');
+          form.setValue('description', data.description || '');
+          form.setValue('category', data.category || '');
+          form.setValue('condition', data.condition || '');
+          
+          // Set the image preview from AI Studio
+          if (data.generatedImage) {
+            setImagePreview(data.generatedImage);
+          } else if (data.garmentImageDataUrl) {
+            setImagePreview(data.garmentImageDataUrl);
+          }
+          
+          // Reconstruct the image file from the Data URL
+          if (data.garmentImageDataUrl) {
+            // Convert data URL back to File
+            fetch(data.garmentImageDataUrl)
+              .then(res => res.blob())
+              .then(blob => {
+                const file = new File([blob], data.garmentImageName || 'ai-studio-image.jpg', { 
+                  type: data.garmentImageType || 'image/jpeg' 
+                });
+                form.setValue('image', file);
+              })
+              .catch(error => {
+                console.error('Error reconstructing image file:', error);
+              });
+          }
+          
+          // Open the product form
+          setIsAddProductOpen(true);
+          
+          // Clear the localStorage
+          localStorage.removeItem('aiStudioDraft');
+          
+          // Clean up URL
+          window.history.replaceState({}, '', '/seller-dashboard');
+        } catch (error) {
+          console.error('Error parsing AI Studio data:', error);
+        }
+      }
+    }
+  }, [form]);
 
   // Fetch seller products
   const { data: products = [], isLoading: isLoadingProducts } = useQuery({
@@ -87,6 +143,7 @@ export default function SellerDashboard() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/sellers', sellerId, 'products'] });
       setIsAddProductOpen(false);
+      setImagePreview(null);
       form.reset();
     },
     onError: () => {
@@ -108,9 +165,16 @@ export default function SellerDashboard() {
       // Store the image file for backend processing
       form.setValue('image', file);
 
+      // Create image preview
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+
       toast({
         title: "✅ Image uploaded successfully",
-        description: "AI processing will happen when you submit the product.",
+        description: "Your product image is ready for submission.",
         duration: 3000,
       });
     } catch (error) {
@@ -467,37 +531,65 @@ export default function SellerDashboard() {
                 <div>
                   <Label>Product Image</Label>
                   <div className="mt-2 border-2 border-dashed border-border rounded-lg p-6 text-center">
-                    <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        Upload a photo of your product. Our AI will remove the background and add a professional mannequin.
-                      </p>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            form.setValue('image', file);
-                            handleImageUpload(file);
-                          }
-                        }}
-                        className="hidden"
-                        id="image-upload"
-                        data-testid="image-upload"
-                      />
-                      <label htmlFor="image-upload">
-                        <Button type="button" variant="outline" asChild>
-                          <span>Choose Image</span>
-                        </Button>
-                      </label>
-                      {isProcessingImage && (
-                        <div className="flex items-center justify-center space-x-2 mt-4">
-                          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-                          <p className="text-sm text-primary">Processing image with AI...</p>
+                    {imagePreview ? (
+                      <div className="space-y-4">
+                        <img 
+                          src={imagePreview} 
+                          alt="Product preview" 
+                          className="w-32 h-32 object-cover rounded-lg mx-auto"
+                        />
+                        <div className="space-y-2">
+                          <p className="text-sm text-muted-foreground">
+                            Product image uploaded successfully
+                          </p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setImagePreview(null);
+                              form.setValue('image', undefined);
+                            }}
+                          >
+                            Change Image
+                          </Button>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <>
+                        <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                        <div className="space-y-2">
+                          <p className="text-sm text-muted-foreground">
+                            Upload a clear photo of your product
+                          </p>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                form.setValue('image', file);
+                                handleImageUpload(file);
+                              }
+                            }}
+                            className="hidden"
+                            id="image-upload"
+                            data-testid="image-upload"
+                          />
+                          <label htmlFor="image-upload">
+                            <Button type="button" variant="outline" asChild>
+                              <span>Choose Image</span>
+                            </Button>
+                          </label>
+                          {isProcessingImage && (
+                            <div className="flex items-center justify-center space-x-2 mt-4">
+                              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                              <p className="text-sm text-primary">Uploading image...</p>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
 
@@ -518,7 +610,7 @@ export default function SellerDashboard() {
                     {createProductMutation.isPending ? (
                       <>
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Adding with AI...
+                        Adding Product...
                       </>
                     ) : (
                       "Add Product"

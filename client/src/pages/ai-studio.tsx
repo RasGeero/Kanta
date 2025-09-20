@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
   ArrowLeft, 
   Upload, 
@@ -9,7 +8,10 @@ import {
   Wand2, 
   Image as ImageIcon,
   User,
-  Sparkles
+  Sparkles,
+  Shirt,
+  TrendingUp,
+  Crown
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -19,16 +21,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { productApi } from "@/services/api";
-import { insertProductSchema } from "@shared/schema";
-import { z } from "zod";
-
-const aiStudioFormSchema = insertProductSchema.extend({
-  garmentImage: z.instanceof(File).optional(),
-  modelImage: z.instanceof(File).optional(),
-});
-
-type AIStudioFormData = z.infer<typeof aiStudioFormSchema>;
 
 interface AIStudioResult {
   generatedImage: string;
@@ -40,7 +32,6 @@ interface AIStudioResult {
 export default function AIStudio() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   // State for the three panels
   const [garmentImage, setGarmentImage] = useState<File | null>(null);
@@ -114,48 +105,47 @@ export default function AIStudio() {
     }
   };
 
-  // Save to draft mutation
-  const saveToDraftMutation = useMutation({
-    mutationFn: async () => {
-      if (!aiResult || !garmentImage) {
-        throw new Error("Missing required data");
-      }
-
-      const formData = new FormData();
-      formData.append('sellerId', sellerId);
-      formData.append('title', aiResult.productTitle);
-      formData.append('description', aiResult.suggestedDescription);
-      formData.append('category', aiResult.suggestedCategory);
-      formData.append('condition', 'excellent');
-      formData.append('price', '0'); // Will be set by seller later
-      formData.append('status', 'draft'); // Mark as draft for seller to complete later
-      formData.append('image', garmentImage);
-      
-      return productApi.createProduct(formData);
-    },
-    onSuccess: () => {
+  const handleSaveToDraft = () => {
+    if (!aiResult || !garmentImage) {
       toast({
-        title: "Saved to Drafts",
-        description: "Product has been saved to your seller dashboard.",
-      });
-      
-      // Invalidate products cache to refresh seller dashboard
-      queryClient.invalidateQueries({ queryKey: ['/api/sellers', sellerId, 'products'] });
-      
-      // Navigate back to seller dashboard
-      setLocation('/seller-dashboard');
-    },
-    onError: () => {
-      toast({
-        title: "Save Failed",
-        description: "Failed to save product draft. Please try again.",
+        title: "Missing Data",
+        description: "Please ensure you have completed the AI generation process.",
         variant: "destructive",
       });
-    },
-  });
+      return;
+    }
 
-  const handleSaveToDraft = () => {
-    saveToDraftMutation.mutate();
+    // Convert the File to a Data URL for localStorage storage
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const garmentImageDataUrl = e.target?.result as string;
+      
+      // Create a data object to pass to the seller dashboard
+      const aiGeneratedData = {
+        title: aiResult.productTitle,
+        description: aiResult.suggestedDescription,
+        category: aiResult.suggestedCategory,
+        condition: 'excellent',
+        garmentImageDataUrl: garmentImageDataUrl,
+        garmentImageName: garmentImage.name,
+        garmentImageType: garmentImage.type,
+        generatedImage: aiResult.generatedImage,
+        isFromAiStudio: true
+      };
+
+      // Store the AI-generated data in localStorage for the seller dashboard to pick up
+      localStorage.setItem('aiStudioDraft', JSON.stringify(aiGeneratedData));
+
+      toast({
+        title: "Ready for Details",
+        description: "Complete your product details in the form.",
+      });
+
+      // Navigate back to seller dashboard with a flag to open the product form
+      setLocation('/seller-dashboard?openForm=true');
+    };
+    
+    reader.readAsDataURL(garmentImage);
   };
 
   const handleDownloadResult = () => {
@@ -183,20 +173,20 @@ export default function AIStudio() {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+      <div className="mb-8">
+        <div className="flex items-center space-x-4 mb-4">
           <Button 
             variant="outline" 
+            size="icon"
             onClick={() => setLocation('/seller-dashboard')}
             data-testid="back-to-dashboard"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">AI Studio</h1>
-            <p className="text-muted-foreground">Generate professional product photos with AI try-on technology</p>
-          </div>
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold text-foreground mb-2">AI Studio</h1>
+          <p className="text-muted-foreground">Generate professional product photos with AI try-on technology</p>
         </div>
       </div>
 
@@ -220,7 +210,7 @@ export default function AIStudio() {
                     <img 
                       src={garmentImagePreview} 
                       alt="Garment preview" 
-                      className="w-full h-48 object-cover rounded-lg mx-auto"
+                      className="w-32 h-48 object-cover rounded-lg mx-auto"
                     />
                     <Button
                       variant="outline"
@@ -270,9 +260,24 @@ export default function AIStudio() {
                   <SelectValue placeholder="Select garment category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Top">Top</SelectItem>
-                  <SelectItem value="Bottom">Bottom</SelectItem>
-                  <SelectItem value="Full-body">Full-body</SelectItem>
+                  <SelectItem value="Top">
+                    <div className="flex items-center space-x-2">
+                      <Shirt className="h-4 w-4" />
+                      <span>Top</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="Bottom">
+                    <div className="flex items-center space-x-2">
+                      <TrendingUp className="h-4 w-4" />
+                      <span>Bottom</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="Full-body">
+                    <div className="flex items-center space-x-2">
+                      <Crown className="h-4 w-4" />
+                      <span>Full-body</span>
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -320,7 +325,7 @@ export default function AIStudio() {
                     <img 
                       src={modelImagePreview} 
                       alt="Model preview" 
-                      className="w-full h-48 object-cover rounded-lg mx-auto"
+                      className="w-32 h-48 object-cover rounded-lg mx-auto"
                     />
                     <Button
                       variant="outline"
@@ -432,11 +437,11 @@ export default function AIStudio() {
             {aiResult && (
               <div className="space-y-4">
                 {/* Generated Image */}
-                <div className="border rounded-lg overflow-hidden">
+                <div className="border rounded-lg overflow-hidden flex justify-center">
                   <img 
                     src={aiResult.generatedImage} 
                     alt="AI try-on result" 
-                    className="w-full h-64 object-cover"
+                    className="w-48 h-64 object-cover"
                     data-testid="ai-result-image"
                   />
                 </div>
@@ -466,21 +471,11 @@ export default function AIStudio() {
                   
                   <Button 
                     onClick={handleSaveToDraft}
-                    disabled={saveToDraftMutation.isPending}
                     className="w-full"
                     data-testid="save-to-draft"
                   >
-                    {saveToDraftMutation.isPending ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4 mr-2" />
-                        Save to Product Draft
-                      </>
-                    )}
+                    <Save className="h-4 w-4 mr-2" />
+                    Complete Product Details
                   </Button>
                   
                   <Button 
