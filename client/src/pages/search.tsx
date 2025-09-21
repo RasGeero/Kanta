@@ -490,12 +490,12 @@ export default function Search() {
                           <Badge variant="outline">{product.size}</Badge>
                           <Badge variant="outline">{product.condition}</Badge>
                         </div>
-                        {product.averageRating && product.averageRating > 0 && (
-                          <div className="flex items-center space-x-1 mt-2">
-                            <span className="text-sm">⭐ {product.averageRating}</span>
+                        <div className="flex items-center space-x-1 mt-2">
+                          <span className="text-sm">⭐ {product.averageRating && product.averageRating > 0 ? product.averageRating.toFixed(1) : "No reviews"}</span>
+                          {product.reviewCount > 0 && (
                             <span className="text-sm text-muted-foreground">({product.reviewCount} reviews)</span>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                       <div className="text-right">
                         <p className="text-2xl font-bold text-primary">GH₵{parseFloat(product.price).toFixed(0)}</p>

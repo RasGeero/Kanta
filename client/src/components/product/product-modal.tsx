@@ -104,28 +104,29 @@ export default function ProductModal({
                 >
                   {product.title}
                 </DialogTitle>
-                {product.averageRating && product.averageRating > 0 && (
-                  <div className="flex items-center space-x-2">
-                    <div className="flex items-center space-x-1">
-                      {[...Array(5)].map((_, i) => (
-                        <Star 
-                          key={i} 
-                          className={`h-4 w-4 ${
-                            i < Math.floor(product.averageRating!) 
-                              ? 'text-accent fill-accent' 
-                              : 'text-muted'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <span 
-                      className="text-sm text-muted-foreground"
-                      data-testid={`product-modal-reviews-${product.id}`}
-                    >
-                      ({product.reviewCount} reviews)
-                    </span>
+                <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star 
+                        key={i} 
+                        className={`h-4 w-4 ${
+                          product.averageRating && i < Math.floor(product.averageRating) 
+                            ? 'text-accent fill-accent' 
+                            : 'text-muted-foreground'
+                        }`}
+                      />
+                    ))}
                   </div>
-                )}
+                  <span 
+                    className="text-sm text-muted-foreground"
+                    data-testid={`product-modal-reviews-${product.id}`}
+                  >
+                    {product.averageRating && product.averageRating > 0 
+                      ? `${product.averageRating.toFixed(1)} (${product.reviewCount || 0} reviews)`
+                      : "No reviews yet"
+                    }
+                  </span>
+                </div>
               </div>
             </DialogHeader>
             
