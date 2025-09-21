@@ -256,6 +256,91 @@ export default function Profile() {
     logoutMutation.mutate();
   };
 
+  // Settings button handlers
+  const handleEmailNotifications = () => {
+    toast({
+      title: "Email Notifications",
+      description: "Email notification settings will be available soon. For now, all important updates will be sent to your registered email.",
+    });
+  };
+
+  const handleSmsNotifications = () => {
+    toast({
+      title: "SMS Notifications",
+      description: "SMS notification setup will be available soon. You'll receive delivery updates via email for now.",
+    });
+  };
+
+  const handlePrivacySettings = () => {
+    toast({
+      title: "Privacy Settings",
+      description: "Privacy settings management will be available soon. Your data is always protected according to our privacy policy.",
+    });
+  };
+
+  const handleEditStore = () => {
+    toast({
+      title: "Store Information",
+      description: "Store customization features will be available soon. You can manage basic info through your profile for now.",
+    });
+  };
+
+  const handleShippingSettings = () => {
+    toast({
+      title: "Shipping Settings",
+      description: "Shipping configuration will be available soon. Standard delivery options are currently available for all orders.",
+    });
+  };
+
+  const handleReturnPolicy = () => {
+    toast({
+      title: "Return Policy",
+      description: "Return policy management will be available soon. Standard return terms apply to all sales.",
+    });
+  };
+
+  const handleOrderNotifications = () => {
+    toast({
+      title: "Order Notifications",
+      description: "Order notification preferences will be available soon. You'll receive all important order updates via email.",
+    });
+  };
+
+  const handlePerformanceReports = () => {
+    toast({
+      title: "Performance Reports",
+      description: "Automated performance reports will be available soon. You can view your sales data in the seller dashboard.",
+    });
+  };
+
+  const handleInventoryAlerts = () => {
+    toast({
+      title: "Inventory Alerts",
+      description: "Inventory management features will be available soon. Monitor your listings through the seller dashboard.",
+    });
+  };
+
+  const handlePaymentMethods = () => {
+    toast({
+      title: "Payment Methods",
+      description: "Payment method management will be available soon. Payments are currently processed through our secure platform.",
+    });
+  };
+
+  const handleTaxInformation = () => {
+    toast({
+      title: "Tax Information",
+      description: "Tax settings will be available soon. Please consult with a tax professional for current obligations.",
+    });
+  };
+
+  const handleCommissionSettings = () => {
+    toast({
+      title: "Commission Settings",
+      description: "Platform commission is currently 5% of each sale. Detailed commission structure will be available soon.",
+    });
+  };
+
   const getOrderStatusColor = (status: string) => {
     switch (status) {
       case 'delivered':
@@ -583,7 +668,7 @@ export default function Profile() {
                     <h4 className="font-medium">Email Notifications</h4>
                     <p className="text-sm text-muted-foreground">Receive updates about your orders and promotions</p>
                   </div>
-                  <Button variant="outline" size="sm">Configure</Button>
+                  <Button variant="outline" size="sm" onClick={handleEmailNotifications} data-testid="configure-email-notifications">Configure</Button>
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -591,7 +676,7 @@ export default function Profile() {
                     <h4 className="font-medium">SMS Notifications</h4>
                     <p className="text-sm text-muted-foreground">Get delivery updates via SMS</p>
                   </div>
-                  <Button variant="outline" size="sm">Configure</Button>
+                  <Button variant="outline" size="sm" onClick={handleSmsNotifications} data-testid="configure-sms-notifications">Configure</Button>
                 </div>
                 
                 <div className="flex items-center justify-between">
@@ -599,7 +684,7 @@ export default function Profile() {
                     <h4 className="font-medium">Privacy Settings</h4>
                     <p className="text-sm text-muted-foreground">Manage your data and privacy preferences</p>
                   </div>
-                  <Button variant="outline" size="sm">Manage</Button>
+                  <Button variant="outline" size="sm" onClick={handlePrivacySettings} data-testid="manage-privacy-settings">Manage</Button>
                 </div>
               </CardContent>
             </Card>
@@ -772,7 +857,7 @@ export default function Profile() {
                         <h4 className="font-medium">Store Information</h4>
                         <p className="text-sm text-muted-foreground">Manage your store name, description, and policies</p>
                       </div>
-                      <Button variant="outline" size="sm">Edit Store</Button>
+                      <Button variant="outline" size="sm" onClick={handleEditStore} data-testid="edit-store-button">Edit Store</Button>
                     </div>
                     
                     <div className="flex items-center justify-between">
@@ -780,7 +865,7 @@ export default function Profile() {
                         <h4 className="font-medium">Shipping Settings</h4>
                         <p className="text-sm text-muted-foreground">Configure delivery options and rates</p>
                       </div>
-                      <Button variant="outline" size="sm">Configure</Button>
+                      <Button variant="outline" size="sm" onClick={handleShippingSettings} data-testid="configure-shipping-settings">Configure</Button>
                     </div>
                     
                     <div className="flex items-center justify-between">
@@ -788,7 +873,7 @@ export default function Profile() {
                         <h4 className="font-medium">Return Policy</h4>
                         <p className="text-sm text-muted-foreground">Set your return and refund policies</p>
                       </div>
-                      <Button variant="outline" size="sm">Manage</Button>
+                      <Button variant="outline" size="sm" onClick={handleReturnPolicy} data-testid="manage-return-policy">Manage</Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -803,7 +888,7 @@ export default function Profile() {
                         <h4 className="font-medium">Order Notifications</h4>
                         <p className="text-sm text-muted-foreground">Get alerts for new orders and order updates</p>
                       </div>
-                      <Button variant="outline" size="sm">Configure</Button>
+                      <Button variant="outline" size="sm" onClick={handleOrderNotifications} data-testid="configure-order-notifications">Configure</Button>
                     </div>
                     
                     <div className="flex items-center justify-between">
@@ -811,7 +896,7 @@ export default function Profile() {
                         <h4 className="font-medium">Performance Reports</h4>
                         <p className="text-sm text-muted-foreground">Receive weekly sales and performance summaries</p>
                       </div>
-                      <Button variant="outline" size="sm">Enable</Button>
+                      <Button variant="outline" size="sm" onClick={handlePerformanceReports} data-testid="enable-performance-reports">Enable</Button>
                     </div>
                     
                     <div className="flex items-center justify-between">
@@ -819,7 +904,7 @@ export default function Profile() {
                         <h4 className="font-medium">Inventory Alerts</h4>
                         <p className="text-sm text-muted-foreground">Get notified when items are low in stock</p>
                       </div>
-                      <Button variant="outline" size="sm">Set Alerts</Button>
+                      <Button variant="outline" size="sm" onClick={handleInventoryAlerts} data-testid="set-inventory-alerts">Set Alerts</Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -834,7 +919,7 @@ export default function Profile() {
                         <h4 className="font-medium">Payment Methods</h4>
                         <p className="text-sm text-muted-foreground">Manage how you receive payments</p>
                       </div>
-                      <Button variant="outline" size="sm">Manage</Button>
+                      <Button variant="outline" size="sm" onClick={handlePaymentMethods} data-testid="manage-payment-methods">Manage</Button>
                     </div>
                     
                     <div className="flex items-center justify-between">
@@ -842,7 +927,7 @@ export default function Profile() {
                         <h4 className="font-medium">Tax Information</h4>
                         <p className="text-sm text-muted-foreground">Update your tax details and VAT settings</p>
                       </div>
-                      <Button variant="outline" size="sm">Update</Button>
+                      <Button variant="outline" size="sm" onClick={handleTaxInformation} data-testid="update-tax-information">Update</Button>
                     </div>
                     
                     <div className="flex items-center justify-between">
@@ -850,7 +935,7 @@ export default function Profile() {
                         <h4 className="font-medium">Commission Settings</h4>
                         <p className="text-sm text-muted-foreground">View platform fees and commission structure</p>
                       </div>
-                      <Button variant="outline" size="sm">View Details</Button>
+                      <Button variant="outline" size="sm" onClick={handleCommissionSettings} data-testid="view-commission-details">View Details</Button>
                     </div>
                   </CardContent>
                 </Card>
