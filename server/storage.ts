@@ -17,6 +17,8 @@ import {
   type InsertReport,
   type CartItem,
   type InsertCartItem,
+  type Mannequin,
+  type InsertMannequin,
   users,
   products,
   orders,
@@ -24,7 +26,8 @@ import {
   reviews,
   wishlist,
   reports,
-  cartItems
+  cartItems,
+  mannequins
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ilike, gte, lte, desc, asc, count, avg, sql } from "drizzle-orm";
@@ -104,6 +107,23 @@ export interface IStorage {
   createReport(report: InsertReport): Promise<Report>;
   getReports(status?: string): Promise<Report[]>;
   updateReportStatus(id: string, status: string): Promise<boolean>;
+
+  // Mannequin operations
+  getMannequin(id: string): Promise<Mannequin | undefined>;
+  getAllMannequins(): Promise<Mannequin[]>;
+  getActiveMannequins(): Promise<Mannequin[]>;
+  getMannequinsByGender(gender: string): Promise<Mannequin[]>;
+  searchMannequins(query: {
+    gender?: string;
+    bodyType?: string;
+    ethnicity?: string;
+    category?: string;
+    tags?: string[];
+  }): Promise<Mannequin[]>;
+  createMannequin(mannequin: InsertMannequin): Promise<Mannequin>;
+  updateMannequin(id: string, updates: Partial<Mannequin>): Promise<Mannequin | undefined>;
+  deleteMannequin(id: string): Promise<boolean>;
+  toggleMannequinStatus(id: string, isActive: boolean): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -115,6 +135,7 @@ export class MemStorage implements IStorage {
   private wishlist: Map<string, Wishlist> = new Map();
   private reports: Map<string, Report> = new Map();
   private cartItems: Map<string, CartItem> = new Map();
+  private mannequins: Map<string, Mannequin> = new Map();
 
   constructor() {
     this.initializeSeedData();
@@ -310,6 +331,73 @@ export class MemStorage implements IStorage {
       createdAt: new Date(),
     };
     this.reviews.set(reviewId2, review2);
+
+    // Create sample mannequins
+    const mannequinId1 = randomUUID();
+    const mannequin1: Mannequin = {
+      id: mannequinId1,
+      name: "Professional Male Model",
+      imageUrl: "https://res.cloudinary.com/demo/image/upload/c_fill,h_600,w_400/sample_male_model.png",
+      cloudinaryPublicId: "sample_male_model",
+      gender: "men",
+      bodyType: "athletic",
+      ethnicity: "diverse", 
+      ageRange: "adult",
+      pose: "front",
+      category: "formal",
+      height: 180,
+      hasTransparentBackground: true,
+      isActive: true,
+      sortOrder: 1,
+      tags: ["professional", "business", "formal"],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.mannequins.set(mannequinId1, mannequin1);
+
+    const mannequinId2 = randomUUID();
+    const mannequin2: Mannequin = {
+      id: mannequinId2,
+      name: "Elegant Female Model",
+      imageUrl: "https://res.cloudinary.com/demo/image/upload/c_fill,h_600,w_400/sample_female_model.png",
+      cloudinaryPublicId: "sample_female_model",
+      gender: "women",
+      bodyType: "slim",
+      ethnicity: "african",
+      ageRange: "adult",
+      pose: "front",
+      category: "general",
+      height: 170,
+      hasTransparentBackground: true,
+      isActive: true,
+      sortOrder: 2,
+      tags: ["elegant", "fashion", "general"],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.mannequins.set(mannequinId2, mannequin2);
+
+    const mannequinId3 = randomUUID();
+    const mannequin3: Mannequin = {
+      id: mannequinId3,
+      name: "Casual Unisex Model",
+      imageUrl: "https://res.cloudinary.com/demo/image/upload/c_fill,h_600,w_400/sample_unisex_model.png",
+      cloudinaryPublicId: "sample_unisex_model",
+      gender: "unisex",
+      bodyType: "average",
+      ethnicity: "asian",
+      ageRange: "young_adult",
+      pose: "three_quarter",
+      category: "casual",
+      height: 175,
+      hasTransparentBackground: true,
+      isActive: true,
+      sortOrder: 3,
+      tags: ["casual", "everyday", "versatile"],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.mannequins.set(mannequinId3, mannequin3);
   }
 
   // User operations
@@ -898,6 +986,109 @@ export class MemStorage implements IStorage {
     this.reports.set(id, report);
     return true;
   }
+
+  // Mannequin operations
+  async getMannequin(id: string): Promise<Mannequin | undefined> {
+    return this.mannequins.get(id);
+  }
+
+  async getAllMannequins(): Promise<Mannequin[]> {
+    return Array.from(this.mannequins.values())
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  }
+
+  async getActiveMannequins(): Promise<Mannequin[]> {
+    return Array.from(this.mannequins.values())
+      .filter(m => m.isActive)
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  }
+
+  async getMannequinsByGender(gender: string): Promise<Mannequin[]> {
+    return Array.from(this.mannequins.values())
+      .filter(m => m.isActive && (m.gender === gender || m.gender === 'unisex'))
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  }
+
+  async searchMannequins(query: {
+    gender?: string;
+    bodyType?: string;
+    ethnicity?: string;
+    category?: string;
+    tags?: string[];
+  }): Promise<Mannequin[]> {
+    let mannequins = Array.from(this.mannequins.values()).filter(m => m.isActive);
+
+    if (query.gender) {
+      mannequins = mannequins.filter(m => m.gender === query.gender || m.gender === 'unisex');
+    }
+
+    if (query.bodyType) {
+      mannequins = mannequins.filter(m => m.bodyType === query.bodyType);
+    }
+
+    if (query.ethnicity) {
+      mannequins = mannequins.filter(m => m.ethnicity === query.ethnicity);
+    }
+
+    if (query.category) {
+      mannequins = mannequins.filter(m => m.category === query.category);
+    }
+
+    if (query.tags && query.tags.length > 0) {
+      mannequins = mannequins.filter(m => 
+        m.tags.some(tag => query.tags!.includes(tag))
+      );
+    }
+
+    return mannequins.sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  }
+
+  async createMannequin(insertMannequin: InsertMannequin): Promise<Mannequin> {
+    const id = randomUUID();
+    const mannequin: Mannequin = {
+      id,
+      name: insertMannequin.name,
+      imageUrl: insertMannequin.imageUrl,
+      gender: insertMannequin.gender,
+      bodyType: insertMannequin.bodyType ?? "average",
+      ethnicity: insertMannequin.ethnicity ?? "diverse",
+      ageRange: insertMannequin.ageRange ?? "adult",
+      pose: insertMannequin.pose ?? "front",
+      category: insertMannequin.category ?? "general",
+      height: insertMannequin.height ?? null,
+      hasTransparentBackground: insertMannequin.hasTransparentBackground ?? true,
+      isActive: insertMannequin.isActive ?? true,
+      sortOrder: insertMannequin.sortOrder ?? 0,
+      cloudinaryPublicId: insertMannequin.cloudinaryPublicId ?? null,
+      tags: [...(insertMannequin.tags ?? [])],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.mannequins.set(id, mannequin);
+    return mannequin;
+  }
+
+  async updateMannequin(id: string, updates: Partial<Mannequin>): Promise<Mannequin | undefined> {
+    const mannequin = this.mannequins.get(id);
+    if (!mannequin) return undefined;
+    
+    const updatedMannequin = { ...mannequin, ...updates, updatedAt: new Date() };
+    this.mannequins.set(id, updatedMannequin);
+    return updatedMannequin;
+  }
+
+  async deleteMannequin(id: string): Promise<boolean> {
+    return this.mannequins.delete(id);
+  }
+
+  async toggleMannequinStatus(id: string, isActive: boolean): Promise<boolean> {
+    const mannequin = this.mannequins.get(id);
+    if (!mannequin) return false;
+    
+    mannequin.isActive = isActive;
+    this.mannequins.set(id, mannequin);
+    return true;
+  }
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1460,6 +1651,98 @@ export class DatabaseStorage implements IStorage {
       .update(reports)
       .set({ status })
       .where(eq(reports.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  // Mannequin operations
+  async getMannequin(id: string): Promise<Mannequin | undefined> {
+    const [mannequin] = await db.select().from(mannequins).where(eq(mannequins.id, id));
+    return mannequin || undefined;
+  }
+
+  async getAllMannequins(): Promise<Mannequin[]> {
+    return db.select().from(mannequins).orderBy(asc(mannequins.sortOrder), desc(mannequins.createdAt));
+  }
+
+  async getActiveMannequins(): Promise<Mannequin[]> {
+    return db.select().from(mannequins)
+      .where(eq(mannequins.isActive, true))
+      .orderBy(asc(mannequins.sortOrder), desc(mannequins.createdAt));
+  }
+
+  async getMannequinsByGender(gender: string): Promise<Mannequin[]> {
+    return db.select().from(mannequins)
+      .where(
+        and(
+          eq(mannequins.isActive, true),
+          sql`${mannequins.gender} = ${gender} OR ${mannequins.gender} = 'unisex'`
+        )
+      )
+      .orderBy(asc(mannequins.sortOrder), desc(mannequins.createdAt));
+  }
+
+  async searchMannequins(query: {
+    gender?: string;
+    bodyType?: string;
+    ethnicity?: string;
+    category?: string;
+    tags?: string[];
+  }): Promise<Mannequin[]> {
+    const conditions = [eq(mannequins.isActive, true)];
+
+    if (query.gender) {
+      conditions.push(
+        sql`${mannequins.gender} = ${query.gender.toLowerCase()} OR ${mannequins.gender} = 'unisex'`
+      );
+    }
+
+    if (query.bodyType) {
+      conditions.push(ilike(mannequins.bodyType, `%${query.bodyType.toLowerCase()}%`));
+    }
+
+    if (query.ethnicity) {
+      conditions.push(ilike(mannequins.ethnicity, `%${query.ethnicity.toLowerCase()}%`));
+    }
+
+    if (query.category) {
+      conditions.push(ilike(mannequins.category, `%${query.category.toLowerCase()}%`));
+    }
+
+    // Note: Tags filtering would require JSON operators in production
+    // For now, we'll skip complex tag filtering in database implementation
+
+    return db.select().from(mannequins)
+      .where(and(...conditions))
+      .orderBy(asc(mannequins.sortOrder), desc(mannequins.createdAt));
+  }
+
+  async createMannequin(insertMannequin: InsertMannequin): Promise<Mannequin> {
+    const [mannequin] = await db.insert(mannequins).values({
+      ...insertMannequin,
+      tags: [...(insertMannequin.tags ?? [])]
+    }).returning();
+    return mannequin;
+  }
+
+  async updateMannequin(id: string, updates: Partial<Mannequin>): Promise<Mannequin | undefined> {
+    const [mannequin] = await db
+      .update(mannequins)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(mannequins.id, id))
+      .returning();
+    return mannequin || undefined;
+  }
+
+  async deleteMannequin(id: string): Promise<boolean> {
+    const result = await db.delete(mannequins).where(eq(mannequins.id, id));
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async toggleMannequinStatus(id: string, isActive: boolean): Promise<boolean> {
+    const result = await db
+      .update(mannequins)
+      .set({ isActive, updatedAt: new Date() })
+      .where(eq(mannequins.id, id));
     return (result.rowCount ?? 0) > 0;
   }
 }
