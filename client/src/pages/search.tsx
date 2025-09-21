@@ -199,6 +199,41 @@ export default function Search() {
     }
   };
 
+  const handleBuyNow = (productId: string, size?: string) => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to purchase items.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // For now, just add to cart and show a message about checkout
+    addToCartMutation.mutate({ productId, size });
+    toast({
+      title: "Added to cart",
+      description: "Proceed to cart to complete your purchase.",
+    });
+  };
+
+  const handleContactSeller = (sellerId: string) => {
+    if (!isAuthenticated) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to contact sellers.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // For now, show a message about messaging feature
+    toast({
+      title: "Messaging feature",
+      description: "Direct messaging with sellers will be available soon. You can contact them through the seller's profile page.",
+    });
+  };
+
   const FilterContent = () => (
     <div className="space-y-6">
       <div>
@@ -516,7 +551,10 @@ export default function Search() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onAddToCart={handleAddToCart}
+        onBuyNow={handleBuyNow}
+        onContactSeller={handleContactSeller}
         onToggleWishlist={handleToggleWishlist}
+        isInWishlist={selectedProduct ? userWishlist.some((item: ProductWithSeller) => item.id === selectedProduct.id) : false}
       />
     </div>
   );
