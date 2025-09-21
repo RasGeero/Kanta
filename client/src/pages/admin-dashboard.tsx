@@ -1,18 +1,40 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Store, Package, Flag, DollarSign, CheckCircle, XCircle, User } from "lucide-react";
+import { Users, Store, Package, Flag, DollarSign, CheckCircle, XCircle, User, Plus, Edit, Upload, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { productApi, userApi, orderApi, reportApi, mannequinApi } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import { insertMannequinSchema } from "@shared/schema";
+import { z } from "zod";
 import type { ProductWithSeller, Mannequin } from "@shared/schema";
+
+// Form schema for mannequin creation/editing
+const mannequinFormSchema = insertMannequinSchema.extend({
+  tagsString: z.string().optional(),
+  height: z.coerce.number().int().positive().optional(),
+  sortOrder: z.coerce.number().int().optional()
+}).omit({ tags: true, imageUrl: true, cloudinaryPublicId: true });
+
+type MannequinFormData = z.infer<typeof mannequinFormSchema>;
 
 export default function AdminDashboard() {
   const [selectedProduct, setSelectedProduct] = useState<ProductWithSeller | null>(null);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+  const [isMannequinModalOpen, setIsMannequinModalOpen] = useState(false);
+  const [selectedMannequin, setSelectedMannequin] = useState<Mannequin | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -40,6 +62,25 @@ export default function AdminDashboard() {
   const { data: mannequins = [], isLoading: isLoadingMannequins } = useQuery({
     queryKey: ['/api/mannequins'],
     queryFn: () => mannequinApi.getAllMannequins(),
+  });
+
+  // Mannequin form
+  const mannequinForm = useForm<MannequinFormData>({
+    resolver: zodResolver(mannequinFormSchema),
+    defaultValues: {
+      name: '',
+      gender: 'unisex',
+      bodyType: 'average',
+      ethnicity: 'diverse',
+      ageRange: 'adult',
+      pose: 'front',
+      category: 'general',
+      height: undefined,
+      hasTransparentBackground: true,
+      isActive: true,
+      sortOrder: 0,
+      tagsString: '',
+    },
   });
 
   // Approve product mutation
@@ -139,6 +180,54 @@ export default function AdminDashboard() {
     },
   });
 
+  // Create mannequin mutation
+  const createMannequinMutation = useMutation({
+    mutationFn: (data: FormData) => mannequinApi.createMannequin(data),
+    onSuccess: () => {
+      toast({
+        title: "Mannequin created",
+        description: "Mannequin has been created successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/mannequins'] });
+      setIsMannequinModalOpen(false);
+      mannequinForm.reset();
+      setImageFile(null);
+      setImagePreview(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create mannequin.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Update mannequin mutation
+  const updateMannequinMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string, data: FormData }) => 
+      mannequinApi.updateMannequin(id, data),
+    onSuccess: () => {
+      toast({
+        title: "Mannequin updated",
+        description: "Mannequin has been updated successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/mannequins'] });
+      setIsMannequinModalOpen(false);
+      setSelectedMannequin(null);
+      mannequinForm.reset();
+      setImageFile(null);
+      setImagePreview(null);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update mannequin.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleApproveProduct = (productId: string) => {
     approveProductMutation.mutate(productId);
   };
@@ -157,6 +246,81 @@ export default function AdminDashboard() {
 
   const handleDeleteMannequin = (mannequinId: string) => {
     deleteMannequinMutation.mutate(mannequinId);
+  };
+
+  const handleCreateMannequin = () => {
+    setSelectedMannequin(null);
+    mannequinForm.reset();
+    setImageFile(null);
+    setImagePreview(null);
+    setIsMannequinModalOpen(true);
+  };
+
+  const handleEditMannequin = (mannequin: Mannequin) => {
+    setSelectedMannequin(mannequin);
+    mannequinForm.reset({
+      name: mannequin.name,
+      gender: mannequin.gender,
+      bodyType: mannequin.bodyType || 'average',
+      ethnicity: mannequin.ethnicity || 'diverse',
+      ageRange: mannequin.ageRange || 'adult',
+      pose: mannequin.pose || 'front',
+      category: mannequin.category || 'general',
+      height: mannequin.height || undefined,
+      hasTransparentBackground: mannequin.hasTransparentBackground ?? true,
+      isActive: mannequin.isActive ?? true,
+      sortOrder: mannequin.sortOrder || 0,
+      tagsString: mannequin.tags?.join(', ') || '',
+    });
+    setImagePreview(mannequin.imageUrl);
+    setImageFile(null);
+    setIsMannequinModalOpen(true);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const onSubmitMannequin = (data: MannequinFormData) => {
+    const formData = new FormData();
+    
+    // Add all form fields
+    formData.append('name', data.name);
+    formData.append('gender', data.gender);
+    formData.append('bodyType', data.bodyType || 'average');
+    formData.append('ethnicity', data.ethnicity || 'diverse');
+    formData.append('ageRange', data.ageRange || 'adult');
+    formData.append('pose', data.pose || 'front');
+    formData.append('category', data.category || 'general');
+    if (data.height) formData.append('height', data.height.toString());
+    formData.append('hasTransparentBackground', (data.hasTransparentBackground ?? true).toString());
+    formData.append('isActive', (data.isActive ?? true).toString());
+    formData.append('sortOrder', (data.sortOrder || 0).toString());
+    
+    // Handle tags
+    const tagsArray = data.tagsString 
+      ? data.tagsString.split(',').map((tag: string) => tag.trim()).filter(Boolean)
+      : [];
+    formData.append('tags', JSON.stringify(tagsArray));
+    
+    // Add image file if provided
+    if (imageFile) {
+      formData.append('image', imageFile);
+    }
+    
+    if (selectedMannequin) {
+      updateMannequinMutation.mutate({ id: selectedMannequin.id, data: formData });
+    } else {
+      createMannequinMutation.mutate(formData);
+    }
   };
 
   const handleProductClick = (product: ProductWithSeller) => {
@@ -525,7 +689,16 @@ export default function AdminDashboard() {
         <TabsContent value="mannequins">
           <Card>
             <CardHeader>
-              <CardTitle>Mannequin Management</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>Mannequin Management</CardTitle>
+                <Button 
+                  onClick={handleCreateMannequin}
+                  data-testid="create-mannequin"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Mannequin
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {isLoadingMannequins ? (
@@ -574,6 +747,15 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                       <div className="flex space-x-2">
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handleEditMannequin(mannequin)}
+                          data-testid={`edit-mannequin-${mannequin.id}`}
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
                         <Button 
                           size="sm"
                           variant={mannequin.isActive ? "outline" : "default"}
@@ -652,6 +834,332 @@ export default function AdminDashboard() {
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Mannequin Form Modal */}
+      <Dialog open={isMannequinModalOpen} onOpenChange={setIsMannequinModalOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedMannequin ? 'Edit Mannequin' : 'Create New Mannequin'}
+            </DialogTitle>
+          </DialogHeader>
+          <Form {...mannequinForm}>
+            <form onSubmit={mannequinForm.handleSubmit(onSubmitMannequin)} className="space-y-4">
+              {/* Image Upload */}
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Mannequin Image</label>
+                <div className="flex flex-col space-y-2">
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    data-testid="mannequin-image-input"
+                  />
+                  {imagePreview && (
+                    <div className="w-32 h-48 border rounded-lg overflow-hidden">
+                      <img 
+                        src={imagePreview} 
+                        alt="Preview" 
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Name */}
+              <FormField
+                control={mannequinForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., Athletic Male Model" {...field} data-testid="mannequin-name-input" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Gender */}
+              <FormField
+                control={mannequinForm.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Gender</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="mannequin-gender-select">
+                          <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="men">Men</SelectItem>
+                        <SelectItem value="women">Women</SelectItem>
+                        <SelectItem value="unisex">Unisex</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Body Type */}
+              <FormField
+                control={mannequinForm.control}
+                name="bodyType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Body Type</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
+                      <FormControl>
+                        <SelectTrigger data-testid="mannequin-body-type-select">
+                          <SelectValue placeholder="Select body type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="slim">Slim</SelectItem>
+                        <SelectItem value="average">Average</SelectItem>
+                        <SelectItem value="athletic">Athletic</SelectItem>
+                        <SelectItem value="plus_size">Plus Size</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Ethnicity */}
+              <FormField
+                control={mannequinForm.control}
+                name="ethnicity"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Ethnicity</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
+                      <FormControl>
+                        <SelectTrigger data-testid="mannequin-ethnicity-select">
+                          <SelectValue placeholder="Select ethnicity" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="caucasian">Caucasian</SelectItem>
+                        <SelectItem value="african">African</SelectItem>
+                        <SelectItem value="asian">Asian</SelectItem>
+                        <SelectItem value="hispanic">Hispanic</SelectItem>
+                        <SelectItem value="middle_eastern">Middle Eastern</SelectItem>
+                        <SelectItem value="diverse">Diverse</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Age Range */}
+              <FormField
+                control={mannequinForm.control}
+                name="ageRange"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Age Range</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
+                      <FormControl>
+                        <SelectTrigger data-testid="mannequin-age-range-select">
+                          <SelectValue placeholder="Select age range" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="young_adult">Young Adult</SelectItem>
+                        <SelectItem value="adult">Adult</SelectItem>
+                        <SelectItem value="mature">Mature</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Pose */}
+              <FormField
+                control={mannequinForm.control}
+                name="pose"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Pose</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
+                      <FormControl>
+                        <SelectTrigger data-testid="mannequin-pose-select">
+                          <SelectValue placeholder="Select pose" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="front">Front</SelectItem>
+                        <SelectItem value="side">Side</SelectItem>
+                        <SelectItem value="three_quarter">Three Quarter</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Category */}
+              <FormField
+                control={mannequinForm.control}
+                name="category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Category</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value || undefined}>
+                      <FormControl>
+                        <SelectTrigger data-testid="mannequin-category-select">
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="general">General</SelectItem>
+                        <SelectItem value="formal">Formal</SelectItem>
+                        <SelectItem value="casual">Casual</SelectItem>
+                        <SelectItem value="athletic">Athletic</SelectItem>
+                        <SelectItem value="evening">Evening</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Height */}
+                <FormField
+                  control={mannequinForm.control}
+                  name="height"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Height (cm)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="e.g., 175" 
+                          {...field}
+                          data-testid="mannequin-height-input"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {/* Sort Order */}
+                <FormField
+                  control={mannequinForm.control}
+                  name="sortOrder"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sort Order</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          placeholder="0" 
+                          {...field}
+                          data-testid="mannequin-sort-order-input"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Tags */}
+              <FormField
+                control={mannequinForm.control}
+                name="tagsString"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tags (comma-separated)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="e.g., professional, studio, full-body" 
+                        {...field}
+                        data-testid="mannequin-tags-input"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Transparent Background */}
+                <FormField
+                  control={mannequinForm.control}
+                  name="hasTransparentBackground"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value ?? true}
+                          onCheckedChange={field.onChange}
+                          data-testid="mannequin-transparent-bg-checkbox"
+                        />
+                      </FormControl>
+                      <FormLabel className="text-sm font-normal">
+                        Has Transparent Background
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
+
+                {/* Active Status */}
+                <FormField
+                  control={mannequinForm.control}
+                  name="isActive"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value ?? true}
+                          onCheckedChange={field.onChange}
+                          data-testid="mannequin-active-checkbox"
+                        />
+                      </FormControl>
+                      <FormLabel className="text-sm font-normal">
+                        Active
+                      </FormLabel>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="flex justify-end space-x-4 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsMannequinModalOpen(false)}
+                  data-testid="mannequin-form-cancel"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createMannequinMutation.isPending || updateMannequinMutation.isPending}
+                  data-testid="mannequin-form-submit"
+                >
+                  {createMannequinMutation.isPending || updateMannequinMutation.isPending
+                    ? 'Saving...'
+                    : selectedMannequin ? 'Update Mannequin' : 'Create Mannequin'
+                  }
+                </Button>
+              </div>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
     </div>
