@@ -17,6 +17,76 @@ import sharp from "sharp";
 import fs from "fs/promises";
 import path from "path";
 import bcrypt from "bcryptjs";
+import { v2 as cloudinary } from 'cloudinary';
+
+// Configure Cloudinary - the library auto-reads CLOUDINARY_URL from env
+// Verify required environment variables at startup
+const requiredEnvVars = {
+  CLOUDINARY_URL: process.env.CLOUDINARY_URL,
+  REMOVE_BG_API_KEY: process.env.REMOVE_BG_API_KEY,
+  FASHN_AI_API_KEY: process.env.FASHN_AI_API_KEY,
+};
+
+Object.entries(requiredEnvVars).forEach(([key, value]) => {
+  if (!value) {
+    console.error(`⚠️  ${key} environment variable is missing - AI processing may fail`);
+  } else {
+    console.log(`✅ ${key} configured successfully`);
+  }
+});
+
+// Helper function to upload buffer to Cloudinary
+async function uploadToCloudinary(buffer: Buffer, options: {
+  folder?: string;
+  public_id?: string;
+  format?: string;
+} = {}): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const uploadOptions = {
+      resource_type: 'image' as const,
+      folder: options.folder || 'ai-processing',
+      public_id: options.public_id || undefined,
+      format: options.format || 'png',
+      overwrite: true,
+    };
+
+    cloudinary.uploader.upload_stream(
+      uploadOptions,
+      (error, result) => {
+        if (error) {
+          console.error('Cloudinary upload error:', error);
+          reject(error);
+        } else if (result) {
+          resolve(result.secure_url);
+        } else {
+          reject(new Error('No result from Cloudinary upload'));
+        }
+      }
+    ).end(buffer);
+  });
+}
+
+// Helper function to convert data URL to buffer and upload to Cloudinary
+async function handleDataUrlToCloudinary(dataUrl: string, publicIdPrefix: string): Promise<string> {
+  if (!dataUrl.startsWith('data:image/')) {
+    return dataUrl; // Return as-is if it's already a URL
+  }
+  
+  // Extract base64 data from data URL
+  const matches = dataUrl.match(/^data:image\/([a-zA-Z0-9+/]+);base64,(.+)$/);
+  if (!matches) {
+    throw new Error('Invalid data URL format');
+  }
+  
+  const [, format, base64Data] = matches;
+  const buffer = Buffer.from(base64Data, 'base64');
+  
+  return await uploadToCloudinary(buffer, {
+    folder: 'ai-processing/virtual-tryon',
+    public_id: `${publicIdPrefix}-${Date.now()}`,
+    format: format === 'jpeg' ? 'jpg' : format
+  });
+}
 
 // Configure multer for file uploads
 const upload = multer({ 
@@ -1070,9 +1140,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const processedBuffer = await response.arrayBuffer();
         
-        // Create a base64 data URL for now - in production this would be saved to storage
-        const base64Image = Buffer.from(processedBuffer).toString('base64');
-        processedImageUrl = `data:image/png;base64,${base64Image}`;
+        // Upload processed image to Cloudinary
+        const buffer = Buffer.from(processedBuffer);
+        processedImageUrl = await uploadToCloudinary(buffer, {
+          folder: 'ai-processing/background-removed',
+          public_id: `bg-removed-${Date.now()}`,
+          format: 'png'
+        });
         
       } else if (type === 'url' && image_url) {
         // Process image from URL
@@ -1099,8 +1173,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const processedBuffer = await response.arrayBuffer();
-        const base64Image = Buffer.from(processedBuffer).toString('base64');
-        processedImageUrl = `data:image/png;base64,${base64Image}`;
+        
+        // Upload processed image to Cloudinary
+        const buffer = Buffer.from(processedBuffer);
+        processedImageUrl = await uploadToCloudinary(buffer, {
+          folder: 'ai-processing/background-removed',
+          public_id: `bg-removed-url-${Date.now()}`,
+          format: 'png'
+        });
       } else {
         return res.status(400).json({ 
           success: false,
@@ -1312,18 +1392,8 @@ async function processVirtualTryOn(
       ? "https://images.unsplash.com/photo-1551836022-8b2858c9c69b?w=400&h=600&fit=crop&crop=face" 
       : defaultMannequinUrl;
 
-    // Convert data URL to buffer if needed
-    let garmentImageUrl = imageUrl;
-    if (imageUrl.startsWith('data:image/')) {
-      try {
-        // For now, use the data URL directly - Fashn.ai may accept it
-        // In production, you'd upload to cloud storage and get a public URL
-        garmentImageUrl = imageUrl;
-      } catch (error) {
-        console.warn('Could not process data URL for Fashn.ai:', error);
-        garmentImageUrl = imageUrl;
-      }
-    }
+    // Convert data URL to proper URL using Cloudinary
+    const garmentImageUrl = await handleDataUrlToCloudinary(imageUrl, 'garment');
 
     // Step 1: Submit job to Fashn.ai
     const runResponse = await fetch('https://api.fashn.ai/v1/run', {

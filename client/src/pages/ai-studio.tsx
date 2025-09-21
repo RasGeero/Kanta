@@ -21,6 +21,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { aiProcessing } from "@/services/ai-processing";
 
 interface AIStudioResult {
   generatedImage: string;
@@ -66,10 +67,19 @@ export default function AIStudio() {
   };
 
   const handleGenerateAI = async () => {
-    if (!garmentImage || !modelImage) {
+    if (!garmentImage) {
       toast({
-        title: "Missing Images",
-        description: "Please upload both a garment and model image.",
+        title: "Missing Garment Image",
+        description: "Please upload a garment image to process.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!category) {
+      toast({
+        title: "Missing Category",
+        description: "Please select a garment category.",
         variant: "destructive",
       });
       return;
@@ -77,27 +87,35 @@ export default function AIStudio() {
 
     setIsGenerating(true);
     try {
-      // Simulate AI processing
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Use real AI processing service
+      const result = await aiProcessing.processProductImage(
+        garmentImage,
+        category,
+        'unisex' // Default to unisex mannequin
+      );
       
-      // Mock AI result
-      const mockResult: AIStudioResult = {
-        generatedImage: "/api/placeholder/400/600", // This would be the actual generated image URL
-        productTitle: `${category || 'Stylish'} Garment`,
-        suggestedCategory: category || 'Shirts',
-        suggestedDescription: `Beautiful ${category?.toLowerCase() || 'garment'} perfect for any occasion. High-quality material with excellent fit.`,
-      };
-      
-      setAiResult(mockResult);
-      
-      toast({
-        title: "AI Generation Complete",
-        description: "Your try-on result is ready!",
-      });
+      if (result.success && result.processedImageUrl) {
+        const aiResult: AIStudioResult = {
+          generatedImage: result.processedImageUrl,
+          productTitle: `${category || 'Stylish'} Garment`,
+          suggestedCategory: category || 'Shirts',
+          suggestedDescription: `Beautiful ${category?.toLowerCase() || 'garment'} perfect for any occasion. High-quality material with excellent fit.`,
+        };
+        
+        setAiResult(aiResult);
+        
+        toast({
+          title: "AI Processing Complete",
+          description: result.message,
+        });
+      } else {
+        throw new Error(result.message || 'AI processing failed');
+      }
     } catch (error) {
+      console.error('AI processing error:', error);
       toast({
-        title: "Generation Failed",
-        description: "Something went wrong. Please try again.",
+        title: "Processing Failed",
+        description: error instanceof Error ? error.message : "Something went wrong. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -307,13 +325,14 @@ export default function AIStudio() {
           </CardContent>
         </Card>
 
-        {/* Panel 2: Select Model */}
-        <Card className="h-fit">
+        {/* Panel 2: Select Model (Optional) */}
+        <Card className="h-fit opacity-60">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <User className="h-5 w-5" />
-              <span>Select Model</span>
+              <span>Model (Optional)</span>
             </CardTitle>
+            <p className="text-sm text-muted-foreground">AI will use professional mannequins based on your garment category</p>
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Upload Model Image */}
@@ -387,7 +406,7 @@ export default function AIStudio() {
             {/* Generate Button */}
             <Button
               onClick={handleGenerateAI}
-              disabled={!garmentImage || !modelImage || isGenerating}
+              disabled={!garmentImage || !category || isGenerating}
               className="w-full"
               size="lg"
               data-testid="generate-try-on"
