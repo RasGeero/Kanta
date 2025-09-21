@@ -13,7 +13,9 @@ import type {
   InsertWishlist,
   InsertReport,
   CartItem,
-  InsertCartItem
+  InsertCartItem,
+  Mannequin,
+  InsertMannequin
 } from "@shared/schema";
 
 // Extended cart types
@@ -285,5 +287,75 @@ export const reportApi = {
 
   updateReportStatus: async (id: string, status: string): Promise<void> => {
     await apiRequest('PUT', `/api/reports/${id}/status`, { status });
+  },
+};
+
+// Mannequin API
+export const mannequinApi = {
+  getAllMannequins: async (): Promise<Mannequin[]> => {
+    const response = await apiRequest('GET', '/api/mannequins');
+    return response.json();
+  },
+
+  getActiveMannequins: async (): Promise<Mannequin[]> => {
+    const response = await apiRequest('GET', '/api/mannequins?active=true');
+    return response.json();
+  },
+
+  getMannequin: async (id: string): Promise<Mannequin> => {
+    const response = await apiRequest('GET', `/api/mannequins/${id}`);
+    return response.json();
+  },
+
+  createMannequin: async (mannequinData: FormData): Promise<Mannequin> => {
+    const response = await fetch('/api/mannequins', {
+      method: 'POST',
+      body: mannequinData,
+    });
+    if (!response.ok) {
+      throw new Error('Failed to create mannequin');
+    }
+    return response.json();
+  },
+
+  updateMannequin: async (id: string, mannequinData: FormData): Promise<Mannequin> => {
+    const response = await fetch(`/api/mannequins/${id}`, {
+      method: 'PUT',
+      body: mannequinData,
+    });
+    if (!response.ok) {
+      throw new Error('Failed to update mannequin');
+    }
+    return response.json();
+  },
+
+  deleteMannequin: async (id: string): Promise<void> => {
+    await apiRequest('DELETE', `/api/mannequins/${id}`);
+  },
+
+  toggleMannequinStatus: async (id: string, isActive: boolean): Promise<void> => {
+    await apiRequest('PATCH', `/api/mannequins/${id}/toggle`, { isActive });
+  },
+
+  searchMannequins: async (params: {
+    gender?: string;
+    bodyType?: string;
+    ethnicity?: string;
+    category?: string;
+    tags?: string[];
+  }): Promise<Mannequin[]> => {
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) {
+        if (Array.isArray(value)) {
+          queryParams.append(key, value.join(','));
+        } else {
+          queryParams.append(key, value.toString());
+        }
+      }
+    });
+    
+    const response = await apiRequest('GET', `/api/mannequins?${queryParams}`);
+    return response.json();
   },
 };

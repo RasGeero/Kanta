@@ -1231,11 +1231,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Mannequin overlay requested:', { imageUrl, garmentType, mannequinGender });
       
       try {
-        // Create default model image (mannequin) - in production this would be from a mannequin library
-        const defaultMannequinUrl = "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=600&fit=crop&crop=face"; // Placeholder male mannequin
-        const modelImageUrl = mannequinGender === 'female' 
-          ? "https://images.unsplash.com/photo-1551836022-8b2858c9c69b?w=400&h=600&fit=crop&crop=face" 
-          : defaultMannequinUrl;
+        // Get appropriate mannequin from database
+        const allActiveMannequins = await storage.getActiveMannequins();
+        
+        // Normalize gender mapping to handle various input formats
+        const g = (mannequinGender || 'unisex').toLowerCase();
+        const genderFilter = ['women', 'female'].includes(g) ? 'women' : 
+                            ['men', 'male'].includes(g) ? 'men' : 'unisex';
+        const activeMannequins = allActiveMannequins.filter(m => 
+          m.gender === genderFilter || m.gender === 'unisex'
+        );
+        
+        let modelImageUrl;
+        if (activeMannequins.length > 0) {
+          // Use first available mannequin matching gender preference
+          const selectedMannequin = activeMannequins[0];
+          modelImageUrl = selectedMannequin.imageUrl;
+          console.log(`Using mannequin: ${selectedMannequin.name} (${selectedMannequin.gender}) for gender: ${mannequinGender}`);
+        } else if (allActiveMannequins.length > 0) {
+          // Use any available mannequin if no gender match
+          const selectedMannequin = allActiveMannequins[0];
+          modelImageUrl = selectedMannequin.imageUrl;
+          console.log(`Using fallback mannequin: ${selectedMannequin.name} (${selectedMannequin.gender}) for gender: ${mannequinGender}`);
+        } else {
+          // Final fallback to Unsplash if no mannequins in database
+          console.warn('No active mannequins found in database, using Unsplash fallback');
+          const fallbackMaleUrl = "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=600&fit=crop&crop=face";
+          modelImageUrl = mannequinGender === 'female' 
+            ? "https://images.unsplash.com/photo-1551836022-8b2858c9c69b?w=400&h=600&fit=crop&crop=face" 
+            : fallbackMaleUrl;
+        }
 
         // Step 1: Submit job to Fashn.ai
         const runResponse = await fetch('https://api.fashn.ai/v1/run', {
@@ -1554,17 +1579,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const buffer = req.file.buffer;
         const publicId = `mannequin-${id}-${Date.now()}`;
         
-        validatedData.imageUrl = await uploadToCloudinary(buffer, {
+        (validatedData as any).imageUrl = await uploadToCloudinary(buffer, {
           folder: 'mannequins',
           public_id: publicId,
           format: 'png'
         });
-        validatedData.cloudinaryPublicId = publicId;
+        (validatedData as any).cloudinaryPublicId = publicId;
       } else if (req.body.imageUrl) {
         // Validate provided URL
         const urlSchema = z.string().url();
         try {
-          validatedData.imageUrl = urlSchema.parse(req.body.imageUrl);
+          (validatedData as any).imageUrl = urlSchema.parse(req.body.imageUrl);
         } catch {
           return res.status(400).json({ 
             success: false, 
@@ -1720,11 +1745,36 @@ async function processVirtualTryOn(
   mannequinGender: string
 ): Promise<{ success: boolean; processedImageUrl: string; message: string }> {
   try {
-    // Create default model image (mannequin) - in production this would be from a mannequin library
-    const defaultMannequinUrl = "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=600&fit=crop&crop=face"; // Placeholder male mannequin
-    const modelImageUrl = mannequinGender === 'female' 
-      ? "https://images.unsplash.com/photo-1551836022-8b2858c9c69b?w=400&h=600&fit=crop&crop=face" 
-      : defaultMannequinUrl;
+    // Get appropriate mannequin from database
+    const allActiveMannequins = await storage.getActiveMannequins();
+    
+    // Normalize gender mapping to handle various input formats
+    const g = (mannequinGender || 'unisex').toLowerCase();
+    const genderFilter = ['women', 'female'].includes(g) ? 'women' : 
+                        ['men', 'male'].includes(g) ? 'men' : 'unisex';
+    const activeMannequins = allActiveMannequins.filter(m => 
+      m.gender === genderFilter || m.gender === 'unisex'
+    );
+    
+    let modelImageUrl;
+    if (activeMannequins.length > 0) {
+      // Use first available mannequin matching gender preference
+      const selectedMannequin = activeMannequins[0];
+      modelImageUrl = selectedMannequin.imageUrl;
+      console.log(`Using mannequin: ${selectedMannequin.name} (${selectedMannequin.gender}) for gender: ${mannequinGender}`);
+    } else if (allActiveMannequins.length > 0) {
+      // Use any available mannequin if no gender match
+      const selectedMannequin = allActiveMannequins[0];
+      modelImageUrl = selectedMannequin.imageUrl;
+      console.log(`Using fallback mannequin: ${selectedMannequin.name} (${selectedMannequin.gender}) for gender: ${mannequinGender}`);
+    } else {
+      // Final fallback to Unsplash if no mannequins in database
+      console.warn('No active mannequins found in database, using Unsplash fallback');
+      const fallbackMaleUrl = "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=600&fit=crop&crop=face";
+      modelImageUrl = mannequinGender === 'female' 
+        ? "https://images.unsplash.com/photo-1551836022-8b2858c9c69b?w=400&h=600&fit=crop&crop=face" 
+        : fallbackMaleUrl;
+    }
 
     // Convert data URL to proper URL using Cloudinary
     const garmentImageUrl = await handleDataUrlToCloudinary(imageUrl, 'garment');

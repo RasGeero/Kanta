@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Store, Package, Flag, DollarSign, CheckCircle, XCircle } from "lucide-react";
+import { Users, Store, Package, Flag, DollarSign, CheckCircle, XCircle, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { productApi, userApi, orderApi, reportApi } from "@/services/api";
+import { productApi, userApi, orderApi, reportApi, mannequinApi } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
-import type { ProductWithSeller } from "@shared/schema";
+import type { ProductWithSeller, Mannequin } from "@shared/schema";
 
 export default function AdminDashboard() {
   const [selectedProduct, setSelectedProduct] = useState<ProductWithSeller | null>(null);
@@ -35,6 +35,11 @@ export default function AdminDashboard() {
   const { data: reports = [], isLoading: isLoadingReports } = useQuery({
     queryKey: ['/api/reports'],
     queryFn: () => reportApi.getReports(),
+  });
+
+  const { data: mannequins = [], isLoading: isLoadingMannequins } = useQuery({
+    queryKey: ['/api/mannequins'],
+    queryFn: () => mannequinApi.getAllMannequins(),
   });
 
   // Approve product mutation
@@ -95,6 +100,45 @@ export default function AdminDashboard() {
     },
   });
 
+  // Toggle mannequin status mutation
+  const toggleMannequinMutation = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => 
+      mannequinApi.toggleMannequinStatus(id, isActive),
+    onSuccess: () => {
+      toast({
+        title: "Mannequin updated",
+        description: "Mannequin status has been updated.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/mannequins'] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update mannequin status.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Delete mannequin mutation
+  const deleteMannequinMutation = useMutation({
+    mutationFn: (id: string) => mannequinApi.deleteMannequin(id),
+    onSuccess: () => {
+      toast({
+        title: "Mannequin deleted",
+        description: "Mannequin has been deleted successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/mannequins'] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete mannequin.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleApproveProduct = (productId: string) => {
     approveProductMutation.mutate(productId);
   };
@@ -105,6 +149,14 @@ export default function AdminDashboard() {
 
   const handleUpdateReport = (reportId: string, status: string) => {
     updateReportMutation.mutate({ id: reportId, status });
+  };
+
+  const handleToggleMannequin = (mannequinId: string, isActive: boolean) => {
+    toggleMannequinMutation.mutate({ id: mannequinId, isActive });
+  };
+
+  const handleDeleteMannequin = (mannequinId: string) => {
+    deleteMannequinMutation.mutate(mannequinId);
   };
 
   const handleProductClick = (product: ProductWithSeller) => {
@@ -213,11 +265,12 @@ export default function AdminDashboard() {
 
       {/* Management Tabs */}
       <Tabs defaultValue="products" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="products" data-testid="tab-products">Product Reviews</TabsTrigger>
           <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
           <TabsTrigger value="orders" data-testid="tab-orders">Orders</TabsTrigger>
           <TabsTrigger value="reports" data-testid="tab-reports">Reports</TabsTrigger>
+          <TabsTrigger value="mannequins" data-testid="tab-mannequins">Mannequins</TabsTrigger>
         </TabsList>
 
         <TabsContent value="products">
@@ -460,6 +513,86 @@ export default function AdminDashboard() {
                             </Button>
                           </div>
                         )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="mannequins">
+          <Card>
+            <CardHeader>
+              <CardTitle>Mannequin Management</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoadingMannequins ? (
+                <div className="space-y-4">
+                  {[...Array(3)].map((_, i) => (
+                    <div key={i} className="flex items-center space-x-4 p-4 border rounded-lg animate-pulse">
+                      <div className="w-16 h-16 bg-muted rounded-lg" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-muted rounded" />
+                        <div className="h-3 bg-muted rounded w-1/2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : mannequins.length === 0 ? (
+                <div className="text-center py-8">
+                  <User className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">No mannequins available</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {mannequins.map((mannequin) => (
+                    <div key={mannequin.id} className="flex items-center space-x-4 p-4 border rounded-lg">
+                      <img 
+                        src={mannequin.imageUrl} 
+                        alt={mannequin.name}
+                        className="w-16 h-16 object-cover rounded-lg"
+                      />
+                      <div className="flex-1">
+                        <h4 className="font-medium text-card-foreground">{mannequin.name}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {mannequin.gender} • {mannequin.bodyType} • {mannequin.ethnicity}
+                        </p>
+                        <div className="flex items-center space-x-2 mt-1">
+                          <Badge variant={mannequin.category === 'formal' ? 'default' : 'secondary'}>
+                            {mannequin.category}
+                          </Badge>
+                          <Badge variant={mannequin.isActive ? 'default' : 'destructive'}>
+                            {mannequin.isActive ? 'Active' : 'Inactive'}
+                          </Badge>
+                          {mannequin.tags && mannequin.tags.length > 0 && (
+                            <span className="text-xs text-muted-foreground">
+                              {mannequin.tags.slice(0, 2).join(', ')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button 
+                          size="sm"
+                          variant={mannequin.isActive ? "outline" : "default"}
+                          onClick={() => handleToggleMannequin(mannequin.id, !mannequin.isActive)}
+                          disabled={toggleMannequinMutation.isPending}
+                          data-testid={`toggle-mannequin-${mannequin.id}`}
+                        >
+                          {mannequin.isActive ? 'Deactivate' : 'Activate'}
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="destructive"
+                          onClick={() => handleDeleteMannequin(mannequin.id)}
+                          disabled={deleteMannequinMutation.isPending}
+                          data-testid={`delete-mannequin-${mannequin.id}`}
+                        >
+                          <XCircle className="h-4 w-4 mr-1" />
+                          Delete
+                        </Button>
                       </div>
                     </div>
                   ))}
