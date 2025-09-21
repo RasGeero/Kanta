@@ -1768,12 +1768,9 @@ async function processVirtualTryOn(
       modelImageUrl = selectedMannequin.imageUrl;
       console.log(`Using fallback mannequin: ${selectedMannequin.name} (${selectedMannequin.gender}) for gender: ${mannequinGender}`);
     } else {
-      // Final fallback to Unsplash if no mannequins in database
-      console.warn('No active mannequins found in database, using Unsplash fallback');
-      const fallbackMaleUrl = "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=600&fit=crop&crop=face";
-      modelImageUrl = mannequinGender === 'female' 
-        ? "https://images.unsplash.com/photo-1551836022-8b2858c9c69b?w=400&h=600&fit=crop&crop=face" 
-        : fallbackMaleUrl;
+      // This should not happen if mannequins are properly seeded
+      console.error('No active mannequins found in database - this indicates a configuration issue');
+      throw new Error('No mannequins available for AI try-on processing. Please contact support.');
     }
 
     // Convert data URL to proper URL using Cloudinary

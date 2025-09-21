@@ -294,12 +294,14 @@ export const reportApi = {
 export const mannequinApi = {
   getAllMannequins: async (): Promise<Mannequin[]> => {
     const response = await apiRequest('GET', '/api/mannequins');
-    return response.json();
+    const result = await response.json();
+    return result.data || [];
   },
 
   getActiveMannequins: async (): Promise<Mannequin[]> => {
     const response = await apiRequest('GET', '/api/mannequins?active=true');
-    return response.json();
+    const result = await response.json();
+    return result.data || [];
   },
 
   getMannequin: async (id: string): Promise<Mannequin> => {
