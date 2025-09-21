@@ -9,7 +9,8 @@ import {
   insertReviewSchema,
   insertWishlistSchema,
   insertReportSchema,
-  insertCartItemSchema
+  insertCartItemSchema,
+  insertMannequinSchema
 } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
@@ -1331,6 +1332,339 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ 
         success: false,
         message: error instanceof Error ? error.message : 'Mannequin overlay processing failed'
+      });
+    }
+  });
+
+  // Mannequin Management Routes
+  
+  // Get all mannequins with optional filtering
+  app.get("/api/mannequins", async (req, res) => {
+    try {
+      const { gender, bodyType, ethnicity, category, tags, active } = req.query;
+      
+      let mannequins;
+      
+      // Check if we have search filters
+      const hasFilters = gender || bodyType || ethnicity || category || tags;
+      
+      if (hasFilters) {
+        // Use search with filters
+        const searchQuery: any = {};
+        if (gender) searchQuery.gender = (gender as string).toLowerCase();
+        if (bodyType) searchQuery.bodyType = (bodyType as string).toLowerCase();
+        if (ethnicity) searchQuery.ethnicity = (ethnicity as string).toLowerCase();
+        if (category) searchQuery.category = (category as string).toLowerCase();
+        if (tags) {
+          // Handle tags as comma-separated string or array
+          if (Array.isArray(tags)) {
+            searchQuery.tags = tags as string[];
+          } else {
+            searchQuery.tags = (tags as string).split(',').map(tag => tag.trim()).filter(Boolean);
+          }
+        }
+        
+        mannequins = await storage.searchMannequins(searchQuery);
+        
+        // Apply active filter to search results if specified
+        if (active === 'true') {
+          mannequins = mannequins.filter(m => m.isActive);
+        } else if (active === 'false') {
+          mannequins = mannequins.filter(m => !m.isActive);
+        }
+      } else {
+        // No search filters, use appropriate get method
+        if (active === 'true') {
+          mannequins = await storage.getActiveMannequins();
+        } else if (active === 'false') {
+          // Get all and filter inactive
+          const allMannequins = await storage.getAllMannequins();
+          mannequins = allMannequins.filter(m => !m.isActive);
+        } else {
+          mannequins = await storage.getAllMannequins();
+        }
+      }
+      
+      res.json({ success: true, data: mannequins });
+    } catch (error) {
+      console.error('Get mannequins error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: error instanceof Error ? error.message : 'Failed to fetch mannequins' 
+      });
+    }
+  });
+
+  // Get specific mannequin by ID
+  app.get("/api/mannequins/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Validate ID parameter
+      if (!id || id.trim() === '') {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Valid mannequin ID is required' 
+        });
+      }
+      
+      const mannequin = await storage.getMannequin(id);
+      
+      if (!mannequin) {
+        return res.status(404).json({ success: false, message: 'Mannequin not found' });
+      }
+      
+      res.json({ success: true, data: mannequin });
+    } catch (error) {
+      console.error('Get mannequin error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: error instanceof Error ? error.message : 'Failed to fetch mannequin' 
+      });
+    }
+  });
+
+  // Create new mannequin (Admin only)
+  app.post("/api/mannequins", requireRole('admin'), upload.single('image'), async (req, res) => {
+    try {
+      // Parse and validate the request body
+      let validatedData;
+      try {
+        // Create extended schema with image handling
+        const createMannequinSchema = insertMannequinSchema.extend({
+          height: z.coerce.number().int().positive().optional(),
+          sortOrder: z.coerce.number().int().optional(),
+          tags: z.union([
+            z.array(z.string()),
+            z.string().transform((str) => {
+              if (str.trim() === '') return [];
+              try {
+                const parsed = JSON.parse(str);
+                return Array.isArray(parsed) ? parsed : [str];
+              } catch {
+                return str.split(',').map(tag => tag.trim()).filter(Boolean);
+              }
+            })
+          ]).optional(),
+        }).omit({ imageUrl: true }); // We'll handle imageUrl separately
+
+        validatedData = createMannequinSchema.parse(req.body);
+      } catch (validationError) {
+        if (validationError instanceof z.ZodError) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Validation failed',
+            errors: validationError.errors
+          });
+        }
+        throw validationError;
+      }
+
+      // Handle image upload
+      let imageUrl: string;
+      let cloudinaryPublicId: string | undefined;
+
+      if (req.file) {
+        // Upload image to Cloudinary
+        const buffer = req.file.buffer;
+        const publicId = `mannequin-${Date.now()}`;
+        
+        imageUrl = await uploadToCloudinary(buffer, {
+          folder: 'mannequins',
+          public_id: publicId,
+          format: 'png'
+        });
+        cloudinaryPublicId = publicId;
+      } else if (req.body.imageUrl) {
+        // Use provided image URL (validate it's a URL)
+        const urlSchema = z.string().url();
+        try {
+          imageUrl = urlSchema.parse(req.body.imageUrl);
+        } catch {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Invalid image URL provided' 
+          });
+        }
+      } else {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Either image file or imageUrl is required' 
+        });
+      }
+
+      const mannequinData = {
+        ...validatedData,
+        imageUrl,
+        cloudinaryPublicId
+      };
+
+      const mannequin = await storage.createMannequin(mannequinData);
+      
+      res.status(201).json({ success: true, data: mannequin });
+    } catch (error) {
+      console.error('Create mannequin error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: error instanceof Error ? error.message : 'Failed to create mannequin' 
+      });
+    }
+  });
+
+  // Update mannequin (Admin only)
+  app.put("/api/mannequins/:id", requireRole('admin'), upload.single('image'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Parse and validate the request body
+      let validatedData;
+      try {
+        // Create update schema with image handling
+        const updateMannequinSchema = insertMannequinSchema.partial().extend({
+          height: z.coerce.number().int().positive().optional(),
+          sortOrder: z.coerce.number().int().optional(),
+          tags: z.union([
+            z.array(z.string()),
+            z.string().transform((str) => {
+              if (str.trim() === '') return [];
+              try {
+                const parsed = JSON.parse(str);
+                return Array.isArray(parsed) ? parsed : [str];
+              } catch {
+                return str.split(',').map(tag => tag.trim()).filter(Boolean);
+              }
+            })
+          ]).optional(),
+        }).omit({ imageUrl: true }); // We'll handle imageUrl separately
+
+        validatedData = updateMannequinSchema.parse(req.body);
+      } catch (validationError) {
+        if (validationError instanceof z.ZodError) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Validation failed',
+            errors: validationError.errors
+          });
+        }
+        throw validationError;
+      }
+
+      // Handle image upload if provided
+      if (req.file) {
+        const buffer = req.file.buffer;
+        const publicId = `mannequin-${id}-${Date.now()}`;
+        
+        validatedData.imageUrl = await uploadToCloudinary(buffer, {
+          folder: 'mannequins',
+          public_id: publicId,
+          format: 'png'
+        });
+        validatedData.cloudinaryPublicId = publicId;
+      } else if (req.body.imageUrl) {
+        // Validate provided URL
+        const urlSchema = z.string().url();
+        try {
+          validatedData.imageUrl = urlSchema.parse(req.body.imageUrl);
+        } catch {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Invalid image URL provided' 
+          });
+        }
+      }
+
+      const mannequin = await storage.updateMannequin(id, validatedData);
+      
+      if (!mannequin) {
+        return res.status(404).json({ success: false, message: 'Mannequin not found' });
+      }
+      
+      res.json({ success: true, data: mannequin });
+    } catch (error) {
+      console.error('Update mannequin error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: error instanceof Error ? error.message : 'Failed to update mannequin' 
+      });
+    }
+  });
+
+  // Delete mannequin (Admin only)
+  app.delete("/api/mannequins/:id", requireRole('admin'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Validate ID parameter
+      if (!id || id.trim() === '') {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Valid mannequin ID is required' 
+        });
+      }
+      
+      const success = await storage.deleteMannequin(id);
+      
+      if (!success) {
+        return res.status(404).json({ success: false, message: 'Mannequin not found' });
+      }
+      
+      res.json({ success: true, message: 'Mannequin deleted successfully' });
+    } catch (error) {
+      console.error('Delete mannequin error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: error instanceof Error ? error.message : 'Failed to delete mannequin' 
+      });
+    }
+  });
+
+  // Toggle mannequin active status (Admin only)
+  app.patch("/api/mannequins/:id/toggle", requireRole('admin'), async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Validate ID parameter
+      if (!id || id.trim() === '') {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Valid mannequin ID is required' 
+        });
+      }
+      
+      // Validate and parse request body
+      const toggleSchema = z.object({
+        isActive: z.boolean()
+      });
+      
+      let validatedData;
+      try {
+        validatedData = toggleSchema.parse(req.body);
+      } catch (validationError) {
+        if (validationError instanceof z.ZodError) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Validation failed: isActive must be a boolean',
+            errors: validationError.errors
+          });
+        }
+        throw validationError;
+      }
+      
+      const success = await storage.toggleMannequinStatus(id, validatedData.isActive);
+      
+      if (!success) {
+        return res.status(404).json({ success: false, message: 'Mannequin not found' });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: `Mannequin ${validatedData.isActive ? 'activated' : 'deactivated'} successfully` 
+      });
+    } catch (error) {
+      console.error('Toggle mannequin status error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: error instanceof Error ? error.message : 'Failed to toggle mannequin status' 
       });
     }
   });
