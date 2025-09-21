@@ -1738,6 +1738,75 @@ async function processAIImage(imageUrl: string): Promise<string> {
   }
 }
 
+// Smart mannequin selection function
+function selectBestMannequin(
+  allMannequins: any[], 
+  preferredGender: string, 
+  garmentType: string
+): any | null {
+  if (allMannequins.length === 0) {
+    return null;
+  }
+
+  // Score mannequins based on multiple criteria
+  const scoredMannequins = allMannequins.map(mannequin => {
+    let score = 0;
+    
+    // Gender matching (highest priority)
+    if (mannequin.gender === preferredGender) {
+      score += 100;
+    } else if (mannequin.gender === 'unisex') {
+      score += 80; // Unisex is good fallback
+    } else {
+      score += 20; // Wrong gender gets low score
+    }
+    
+    // Category matching (medium priority)
+    const garmentCategory = mapGarmentToCategory(garmentType);
+    if (mannequin.category === garmentCategory) {
+      score += 50; // Perfect category match
+    } else if (mannequin.category === 'general') {
+      score += 30; // General category is good fallback
+    }
+    
+    // Sort order (lower sort order = higher priority)
+    score += Math.max(0, 20 - (mannequin.sortOrder || 0));
+    
+    // Add small random factor for variety (0-10 points)
+    score += Math.random() * 10;
+    
+    return { mannequin, score };
+  });
+  
+  // Sort by score (highest first) and return the best match
+  scoredMannequins.sort((a, b) => b.score - a.score);
+  
+  console.log(`Mannequin selection scores for ${preferredGender} ${garmentType}:`);
+  scoredMannequins.slice(0, 3).forEach((item, index) => {
+    console.log(`  ${index + 1}. ${item.mannequin.name} (${item.mannequin.gender}, ${item.mannequin.category}): ${item.score.toFixed(1)}`);
+  });
+  
+  return scoredMannequins[0]?.mannequin || null;
+}
+
+// Helper function to map garment types to categories
+function mapGarmentToCategory(garmentType: string): string {
+  const garment = (garmentType || '').toLowerCase();
+  
+  // Map common garment types to mannequin categories
+  if (garment.includes('suit') || garment.includes('blazer') || garment.includes('formal')) {
+    return 'formal';
+  } else if (garment.includes('dress') || garment.includes('gown') || garment.includes('evening')) {
+    return 'evening';
+  } else if (garment.includes('sport') || garment.includes('gym') || garment.includes('athletic')) {
+    return 'athletic';
+  } else if (garment.includes('casual') || garment.includes('t-shirt') || garment.includes('jeans')) {
+    return 'casual';
+  }
+  
+  return 'general'; // Default fallback
+}
+
 // Virtual Try-On Processing Function  
 async function processVirtualTryOn(
   imageUrl: string, 
@@ -1745,28 +1814,21 @@ async function processVirtualTryOn(
   mannequinGender: string
 ): Promise<{ success: boolean; processedImageUrl: string; message: string }> {
   try {
-    // Get appropriate mannequin from database
+    // Get appropriate mannequin from database with smart selection
     const allActiveMannequins = await storage.getActiveMannequins();
     
     // Normalize gender mapping to handle various input formats
     const g = (mannequinGender || 'unisex').toLowerCase();
     const genderFilter = ['women', 'female'].includes(g) ? 'women' : 
                         ['men', 'male'].includes(g) ? 'men' : 'unisex';
-    const activeMannequins = allActiveMannequins.filter(m => 
-      m.gender === genderFilter || m.gender === 'unisex'
-    );
+    
+    // Smart mannequin selection based on garment type and gender
+    const selectedMannequin = selectBestMannequin(allActiveMannequins, genderFilter, garmentType);
     
     let modelImageUrl;
-    if (activeMannequins.length > 0) {
-      // Use first available mannequin matching gender preference
-      const selectedMannequin = activeMannequins[0];
+    if (selectedMannequin) {
       modelImageUrl = selectedMannequin.imageUrl;
-      console.log(`Using mannequin: ${selectedMannequin.name} (${selectedMannequin.gender}) for gender: ${mannequinGender}`);
-    } else if (allActiveMannequins.length > 0) {
-      // Use any available mannequin if no gender match
-      const selectedMannequin = allActiveMannequins[0];
-      modelImageUrl = selectedMannequin.imageUrl;
-      console.log(`Using fallback mannequin: ${selectedMannequin.name} (${selectedMannequin.gender}) for gender: ${mannequinGender}`);
+      console.log(`Using mannequin: ${selectedMannequin.name} (${selectedMannequin.gender}, ${selectedMannequin.category}) for gender: ${mannequinGender}, garment: ${garmentType}`);
     } else {
       // This should not happen if mannequins are properly seeded
       console.error('No active mannequins found in database - this indicates a configuration issue');
