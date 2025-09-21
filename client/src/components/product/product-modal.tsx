@@ -28,20 +28,19 @@ export default function ProductModal({
   onContactSeller,
   isInWishlist = false 
 }: ProductModalProps) {
-  const [selectedSize, setSelectedSize] = useState("");
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   if (!product) return null;
 
-  const sizes = ["S", "M", "L", "XL"];
+  // Product has a specific size, no need for selection in thrift marketplace
   const images = [product.processedImage || product.originalImage, ...(product.images || [])];
 
   const handleAddToCart = () => {
-    onAddToCart?.(product.id, selectedSize || product.size || undefined);
+    onAddToCart?.(product.id, product.size || undefined);
   };
 
   const handleBuyNow = () => {
-    onBuyNow?.(product.id, selectedSize || product.size || undefined);
+    onBuyNow?.(product.id, product.size || undefined);
   };
 
   const handleContactSeller = () => {
@@ -176,23 +175,13 @@ export default function ProductModal({
                 </div>
               </div>
               
-              {/* Size Selection */}
-              {product.category !== "Accessories" && (
+              {/* Size Display */}
+              {product.category !== "Accessories" && product.size && (
                 <div>
                   <Label className="text-sm font-medium mb-2 block">Size</Label>
-                  <RadioGroup value={selectedSize} onValueChange={setSelectedSize}>
-                    <div className="flex space-x-2">
-                      {sizes.map((size) => (
-                        <Label 
-                          key={size} 
-                          className="flex items-center space-x-2 cursor-pointer px-4 py-2 border rounded-lg hover:bg-muted"
-                        >
-                          <RadioGroupItem value={size} />
-                          <span>{size}</span>
-                        </Label>
-                      ))}
-                    </div>
-                  </RadioGroup>
+                  <div className="px-4 py-2 border rounded-lg bg-muted/50">
+                    <span className="font-medium">{product.size}</span>
+                  </div>
                 </div>
               )}
               
