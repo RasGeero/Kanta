@@ -50,11 +50,13 @@ export default function ProductCard({
           className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
           data-testid={`product-image-${product.id}`}
         />
-        <div className="absolute top-3 left-3">
-          <Badge className="bg-accent text-accent-foreground">
-            AI Try-On
-          </Badge>
-        </div>
+        {product.processedImage && product.processedImage !== product.originalImage && (
+          <div className="absolute top-3 left-3">
+            <Badge className="bg-accent text-accent-foreground">
+              AI Try-On
+            </Badge>
+          </div>
+        )}
         <div className="absolute top-3 right-3">
           <Button
             size="icon"

@@ -68,11 +68,13 @@ export default function ProductModal({
                 className="w-full h-96 object-cover rounded-lg"
                 data-testid={`product-modal-main-image-${product.id}`}
               />
-              <div className="absolute top-4 left-4">
-                <Badge className="bg-accent text-accent-foreground">
-                  AI Try-On Enhanced
-                </Badge>
-              </div>
+              {product.processedImage && product.processedImage !== product.originalImage && (
+                <div className="absolute top-4 left-4">
+                  <Badge className="bg-accent text-accent-foreground">
+                    AI Try-On Enhanced
+                  </Badge>
+                </div>
+              )}
             </div>
             
             {/* Thumbnail Images */}
