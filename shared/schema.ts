@@ -145,6 +145,26 @@ export const userPrivacySettings = pgTable("user_privacy_settings", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+export const mannequins = pgTable("mannequins", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // descriptive name like "Athletic Male Model" or "Elegant Female Model"
+  imageUrl: text("image_url").notNull(), // Cloudinary URL
+  cloudinaryPublicId: text("cloudinary_public_id"), // for transformations and management
+  gender: text("gender").notNull(), // men, women, unisex (matches products.gender)
+  bodyType: text("body_type").default("average"), // slim, average, athletic, plus_size
+  ethnicity: text("ethnicity").default("diverse"), // caucasian, african, asian, hispanic, middle_eastern, diverse
+  ageRange: text("age_range").default("adult"), // young_adult, adult, mature
+  pose: text("pose").default("front"), // front, side, three_quarter
+  category: text("category").default("general"), // general, formal, casual, athletic, evening
+  height: integer("height"), // height in cm (optional)
+  hasTransparentBackground: boolean("has_transparent_background").default(true), // for AI compositing
+  isActive: boolean("is_active").default(true),
+  sortOrder: integer("sort_order").default(0), // for custom ordering
+  tags: json("tags").$type<string[]>().notNull().default(sql`'[]'::json`), // additional searchable tags
+  createdAt: timestamp("created_at").default(sql`now()`),
+  updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertProductSchema = createInsertSchema(products).omit({ 
@@ -164,6 +184,11 @@ export const insertReviewSchema = createInsertSchema(reviews).omit({ id: true, c
 export const insertWishlistSchema = createInsertSchema(wishlist).omit({ id: true, createdAt: true });
 export const insertReportSchema = createInsertSchema(reports).omit({ id: true, createdAt: true });
 export const insertCartItemSchema = createInsertSchema(cartItems).omit({ id: true, createdAt: true });
+export const insertMannequinSchema = createInsertSchema(mannequins).omit({ 
+  id: true, 
+  createdAt: true, 
+  updatedAt: true 
+});
 
 // Types
 export type User = typeof users.$inferSelect;
@@ -182,6 +207,8 @@ export type Report = typeof reports.$inferSelect;
 export type InsertReport = z.infer<typeof insertReportSchema>;
 export type CartItem = typeof cartItems.$inferSelect;
 export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
+export type Mannequin = typeof mannequins.$inferSelect;
+export type InsertMannequin = z.infer<typeof insertMannequinSchema>;
 
 // Extended types with relations
 export type ProductWithSeller = Product & {
