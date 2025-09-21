@@ -16,6 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { productApi, orderApi } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/auth-context";
 import { insertProductSchema } from "@shared/schema";
 import { z } from "zod";
 
@@ -33,11 +34,12 @@ export default function SellerDashboard() {
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
 
-  // Mock seller ID - in production, get from authentication
-  const sellerId = "seller-id-placeholder";
+  // Get authenticated user's ID
+  const sellerId = user?.id || "seller-id-placeholder";
 
   const form = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
