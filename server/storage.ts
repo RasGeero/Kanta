@@ -127,7 +127,7 @@ export class MemStorage implements IStorage {
       id: adminId,
       username: "admin",
       email: "admin@kantamanto.com",
-      password: "hashed_admin_password",
+      password: "$2b$12$GdrNsN2xXGtiPfhLduT2Ee6QqrDRuGK1bpsRCSlyLitUwvy/FCF8q",
       firstName: "Admin",
       lastName: "User",
       phone: "+233123456789",
