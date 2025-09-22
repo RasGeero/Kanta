@@ -10,7 +10,7 @@ import {
   insertWishlistSchema,
   insertReportSchema,
   insertCartItemSchema,
-  insertMannequinSchema
+  insertFashionModelSchema
 } from "@shared/schema";
 import { z } from "zod";
 import multer from "multer";
@@ -1231,31 +1231,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('Mannequin overlay requested:', { imageUrl, garmentType, mannequinGender });
       
       try {
-        // Get appropriate mannequin from database
-        const allActiveMannequins = await storage.getActiveMannequins();
+        // Get appropriate fashion model from database using smart selection
+        const allActiveFashionModels = await storage.getActiveFashionModels();
         
         // Normalize gender mapping to handle various input formats
         const g = (mannequinGender || 'unisex').toLowerCase();
         const genderFilter = ['women', 'female'].includes(g) ? 'women' : 
                             ['men', 'male'].includes(g) ? 'men' : 'unisex';
-        const activeMannequins = allActiveMannequins.filter(m => 
-          m.gender === genderFilter || m.gender === 'unisex'
-        );
         
         let modelImageUrl;
-        if (activeMannequins.length > 0) {
-          // Use first available mannequin matching gender preference
-          const selectedMannequin = activeMannequins[0];
-          modelImageUrl = selectedMannequin.imageUrl;
-          console.log(`Using mannequin: ${selectedMannequin.name} (${selectedMannequin.gender}) for gender: ${mannequinGender}`);
-        } else if (allActiveMannequins.length > 0) {
-          // Use any available mannequin if no gender match
-          const selectedMannequin = allActiveMannequins[0];
-          modelImageUrl = selectedMannequin.imageUrl;
-          console.log(`Using fallback mannequin: ${selectedMannequin.name} (${selectedMannequin.gender}) for gender: ${mannequinGender}`);
-        } else {
-          // Final fallback to Unsplash if no mannequins in database
-          console.warn('No active mannequins found in database, using Unsplash fallback');
+        let selectedModel = null;
+        
+        if (allActiveFashionModels.length > 0) {
+          // Use smart selection to get the best matching fashion model
+          selectedModel = selectBestFashionModel(allActiveFashionModels, genderFilter, garmentType);
+          
+          if (selectedModel) {
+            modelImageUrl = selectedModel.imageUrl;
+            console.log(`Using fashion model: ${selectedModel.name} (${selectedModel.gender}) for gender: ${mannequinGender}`);
+            
+            // Track usage of the selected model
+            await storage.incrementFashionModelUsage(selectedModel.id);
+          }
+        }
+        
+        if (!selectedModel) {
+          // Final fallback to Unsplash if no fashion models in database
+          console.warn('No active fashion models found in database, using Unsplash fallback');
           const fallbackMaleUrl = "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=600&fit=crop&crop=face";
           modelImageUrl = mannequinGender === 'female' 
             ? "https://images.unsplash.com/photo-1551836022-8b2858c9c69b?w=400&h=600&fit=crop&crop=face" 
@@ -1361,17 +1363,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Mannequin Management Routes
+  // Fashion Model Management Routes
   
-  // Get all mannequins with optional filtering
-  app.get("/api/mannequins", async (req, res) => {
+  // Get all fashion models with optional filtering
+  app.get("/api/fashion-models", async (req, res) => {
     try {
-      const { gender, bodyType, ethnicity, category, tags, active } = req.query;
+      const { gender, bodyType, ethnicity, category, skinTone, tags, active, featured } = req.query;
       
-      let mannequins;
+      let fashionModels;
       
       // Check if we have search filters
-      const hasFilters = gender || bodyType || ethnicity || category || tags;
+      const hasFilters = gender || bodyType || ethnicity || category || skinTone || tags;
       
       if (hasFilters) {
         // Use search with filters
@@ -1380,6 +1382,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (bodyType) searchQuery.bodyType = (bodyType as string).toLowerCase();
         if (ethnicity) searchQuery.ethnicity = (ethnicity as string).toLowerCase();
         if (category) searchQuery.category = (category as string).toLowerCase();
+        if (skinTone) searchQuery.skinTone = (skinTone as string).toLowerCase();
         if (tags) {
           // Handle tags as comma-separated string or array
           if (Array.isArray(tags)) {
@@ -1389,39 +1392,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
         
-        mannequins = await storage.searchMannequins(searchQuery);
+        fashionModels = await storage.searchFashionModels(searchQuery);
         
         // Apply active filter to search results if specified
         if (active === 'true') {
-          mannequins = mannequins.filter(m => m.isActive);
+          fashionModels = fashionModels.filter(m => m.isActive);
         } else if (active === 'false') {
-          mannequins = mannequins.filter(m => !m.isActive);
+          fashionModels = fashionModels.filter(m => !m.isActive);
+        }
+        
+        // Apply featured filter if specified
+        if (featured === 'true') {
+          fashionModels = fashionModels.filter(m => m.isFeatured);
         }
       } else {
         // No search filters, use appropriate get method
-        if (active === 'true') {
-          mannequins = await storage.getActiveMannequins();
+        if (featured === 'true') {
+          fashionModels = await storage.getFeaturedFashionModels();
+        } else if (active === 'true') {
+          fashionModels = await storage.getActiveFashionModels();
         } else if (active === 'false') {
           // Get all and filter inactive
-          const allMannequins = await storage.getAllMannequins();
-          mannequins = allMannequins.filter(m => !m.isActive);
+          const allFashionModels = await storage.getAllFashionModels();
+          fashionModels = allFashionModels.filter(m => !m.isActive);
         } else {
-          mannequins = await storage.getAllMannequins();
+          fashionModels = await storage.getAllFashionModels();
         }
       }
       
-      res.json({ success: true, data: mannequins });
+      res.json({ success: true, data: fashionModels });
     } catch (error) {
-      console.error('Get mannequins error:', error);
+      console.error('Get fashion models error:', error);
       res.status(500).json({ 
         success: false, 
-        message: error instanceof Error ? error.message : 'Failed to fetch mannequins' 
+        message: error instanceof Error ? error.message : 'Failed to fetch fashion models' 
       });
     }
   });
 
-  // Get specific mannequin by ID
-  app.get("/api/mannequins/:id", async (req, res) => {
+  // Get specific fashion model by ID
+  app.get("/api/fashion-models/:id", async (req, res) => {
     try {
       const { id } = req.params;
       
@@ -1429,36 +1439,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!id || id.trim() === '') {
         return res.status(400).json({ 
           success: false, 
-          message: 'Valid mannequin ID is required' 
+          message: 'Valid fashion model ID is required' 
         });
       }
       
-      const mannequin = await storage.getMannequin(id);
+      const fashionModel = await storage.getFashionModel(id);
       
-      if (!mannequin) {
-        return res.status(404).json({ success: false, message: 'Mannequin not found' });
+      if (!fashionModel) {
+        return res.status(404).json({ success: false, message: 'Fashion model not found' });
       }
       
-      res.json({ success: true, data: mannequin });
+      res.json({ success: true, data: fashionModel });
     } catch (error) {
-      console.error('Get mannequin error:', error);
+      console.error('Get fashion model error:', error);
       res.status(500).json({ 
         success: false, 
-        message: error instanceof Error ? error.message : 'Failed to fetch mannequin' 
+        message: error instanceof Error ? error.message : 'Failed to fetch fashion model' 
       });
     }
   });
 
-  // Create new mannequin (Admin only)
-  app.post("/api/mannequins", requireRole('admin'), upload.single('image'), async (req, res) => {
+  // Create new fashion model (Admin only)
+  app.post("/api/fashion-models", requireRole('admin'), upload.single('image'), async (req, res) => {
     try {
       // Parse and validate the request body
       let validatedData;
       try {
         // Create extended schema with image handling
-        const createMannequinSchema = insertMannequinSchema.extend({
+        const createFashionModelSchema = insertFashionModelSchema.extend({
           height: z.coerce.number().int().positive().optional(),
           sortOrder: z.coerce.number().int().optional(),
+          isFeatured: z.coerce.boolean().optional(),
           tags: z.union([
             z.array(z.string()),
             z.string().transform((str) => {
@@ -1471,9 +1482,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             })
           ]).optional(),
-        }).omit({ imageUrl: true }); // We'll handle imageUrl separately
+        }).omit({ imageUrl: true, thumbnailUrl: true }); // We'll handle imageUrl separately
 
-        validatedData = createMannequinSchema.parse(req.body);
+        validatedData = createFashionModelSchema.parse(req.body);
       } catch (validationError) {
         if (validationError instanceof z.ZodError) {
           return res.status(400).json({ 
@@ -1492,10 +1503,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.file) {
         // Upload image to Cloudinary
         const buffer = req.file.buffer;
-        const publicId = `mannequin-${Date.now()}`;
+        const publicId = `fashion-model-${Date.now()}`;
         
         imageUrl = await uploadToCloudinary(buffer, {
-          folder: 'mannequins',
+          folder: 'fashion-models',
           public_id: publicId,
           format: 'png'
         });
@@ -1518,26 +1529,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const mannequinData = {
+      const fashionModelData = {
         ...validatedData,
         imageUrl,
+        thumbnailUrl: imageUrl, // Use same image as thumbnail for now
         cloudinaryPublicId
       };
 
-      const mannequin = await storage.createMannequin(mannequinData);
+      const fashionModel = await storage.createFashionModel(fashionModelData);
       
-      res.status(201).json({ success: true, data: mannequin });
+      res.status(201).json({ success: true, data: fashionModel });
     } catch (error) {
-      console.error('Create mannequin error:', error);
+      console.error('Create fashion model error:', error);
       res.status(500).json({ 
         success: false, 
-        message: error instanceof Error ? error.message : 'Failed to create mannequin' 
+        message: error instanceof Error ? error.message : 'Failed to create fashion model' 
       });
     }
   });
 
-  // Update mannequin (Admin only)
-  app.put("/api/mannequins/:id", requireRole('admin'), upload.single('image'), async (req, res) => {
+  // Update fashion model (Admin only)
+  app.put("/api/fashion-models/:id", requireRole('admin'), upload.single('image'), async (req, res) => {
     try {
       const { id } = req.params;
       
@@ -1545,9 +1557,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let validatedData;
       try {
         // Create update schema with image handling
-        const updateMannequinSchema = insertMannequinSchema.partial().extend({
+        const updateFashionModelSchema = insertFashionModelSchema.partial().extend({
           height: z.coerce.number().int().positive().optional(),
           sortOrder: z.coerce.number().int().optional(),
+          isFeatured: z.coerce.boolean().optional(),
           tags: z.union([
             z.array(z.string()),
             z.string().transform((str) => {
@@ -1560,9 +1573,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               }
             })
           ]).optional(),
-        }).omit({ imageUrl: true }); // We'll handle imageUrl separately
+        }).omit({ imageUrl: true, thumbnailUrl: true }); // We'll handle imageUrl separately
 
-        validatedData = updateMannequinSchema.parse(req.body);
+        validatedData = updateFashionModelSchema.parse(req.body);
       } catch (validationError) {
         if (validationError instanceof z.ZodError) {
           return res.status(400).json({ 
@@ -1577,13 +1590,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle image upload if provided
       if (req.file) {
         const buffer = req.file.buffer;
-        const publicId = `mannequin-${id}-${Date.now()}`;
+        const publicId = `fashion-model-${id}-${Date.now()}`;
         
         (validatedData as any).imageUrl = await uploadToCloudinary(buffer, {
-          folder: 'mannequins',
+          folder: 'fashion-models',
           public_id: publicId,
           format: 'png'
         });
+        (validatedData as any).thumbnailUrl = (validatedData as any).imageUrl; // Use same as thumbnail
         (validatedData as any).cloudinaryPublicId = publicId;
       } else if (req.body.imageUrl) {
         // Validate provided URL
@@ -1598,24 +1612,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const mannequin = await storage.updateMannequin(id, validatedData);
+      const fashionModel = await storage.updateFashionModel(id, validatedData);
       
-      if (!mannequin) {
-        return res.status(404).json({ success: false, message: 'Mannequin not found' });
+      if (!fashionModel) {
+        return res.status(404).json({ success: false, message: 'Fashion model not found' });
       }
       
-      res.json({ success: true, data: mannequin });
+      res.json({ success: true, data: fashionModel });
     } catch (error) {
-      console.error('Update mannequin error:', error);
+      console.error('Update fashion model error:', error);
       res.status(500).json({ 
         success: false, 
-        message: error instanceof Error ? error.message : 'Failed to update mannequin' 
+        message: error instanceof Error ? error.message : 'Failed to update fashion model' 
       });
     }
   });
 
-  // Delete mannequin (Admin only)
-  app.delete("/api/mannequins/:id", requireRole('admin'), async (req, res) => {
+  // Delete fashion model (Admin only)
+  app.delete("/api/fashion-models/:id", requireRole('admin'), async (req, res) => {
     try {
       const { id } = req.params;
       
@@ -1623,28 +1637,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!id || id.trim() === '') {
         return res.status(400).json({ 
           success: false, 
-          message: 'Valid mannequin ID is required' 
+          message: 'Valid fashion model ID is required' 
         });
       }
       
-      const success = await storage.deleteMannequin(id);
+      const success = await storage.deleteFashionModel(id);
       
       if (!success) {
-        return res.status(404).json({ success: false, message: 'Mannequin not found' });
+        return res.status(404).json({ success: false, message: 'Fashion model not found' });
       }
       
-      res.json({ success: true, message: 'Mannequin deleted successfully' });
+      res.json({ success: true, message: 'Fashion model deleted successfully' });
     } catch (error) {
-      console.error('Delete mannequin error:', error);
+      console.error('Delete fashion model error:', error);
       res.status(500).json({ 
         success: false, 
-        message: error instanceof Error ? error.message : 'Failed to delete mannequin' 
+        message: error instanceof Error ? error.message : 'Failed to delete fashion model' 
       });
     }
   });
 
-  // Toggle mannequin active status (Admin only)
-  app.patch("/api/mannequins/:id/toggle", requireRole('admin'), async (req, res) => {
+  // Toggle fashion model active status (Admin only)
+  app.patch("/api/fashion-models/:id/toggle", requireRole('admin'), async (req, res) => {
     try {
       const { id } = req.params;
       
@@ -1652,7 +1666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!id || id.trim() === '') {
         return res.status(400).json({ 
           success: false, 
-          message: 'Valid mannequin ID is required' 
+          message: 'Valid fashion model ID is required' 
         });
       }
       
@@ -1675,21 +1689,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
         throw validationError;
       }
       
-      const success = await storage.toggleMannequinStatus(id, validatedData.isActive);
+      const success = await storage.toggleFashionModelStatus(id, validatedData.isActive);
       
       if (!success) {
-        return res.status(404).json({ success: false, message: 'Mannequin not found' });
+        return res.status(404).json({ success: false, message: 'Fashion model not found' });
       }
       
       res.json({ 
         success: true, 
-        message: `Mannequin ${validatedData.isActive ? 'activated' : 'deactivated'} successfully` 
+        message: `Fashion model ${validatedData.isActive ? 'activated' : 'deactivated'} successfully` 
       });
     } catch (error) {
-      console.error('Toggle mannequin status error:', error);
+      console.error('Toggle fashion model status error:', error);
       res.status(500).json({ 
         success: false, 
-        message: error instanceof Error ? error.message : 'Failed to toggle mannequin status' 
+        message: error instanceof Error ? error.message : 'Failed to toggle fashion model status' 
+      });
+    }
+  });
+
+  // Get recommended fashion models based on garment type and gender
+  app.get("/api/fashion-models/recommended", async (req, res) => {
+    try {
+      const { garmentType, gender, limit } = req.query;
+      
+      // Validate required parameters
+      if (!garmentType || !gender) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'garmentType and gender are required parameters' 
+        });
+      }
+      
+      const limitNum = limit ? parseInt(limit as string, 10) : 3;
+      
+      if (isNaN(limitNum) || limitNum < 1 || limitNum > 10) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'limit must be a number between 1 and 10' 
+        });
+      }
+      
+      const recommendedModels = await storage.getRecommendedFashionModels(
+        garmentType as string, 
+        gender as string, 
+        limitNum
+      );
+      
+      res.json({ success: true, data: recommendedModels });
+    } catch (error) {
+      console.error('Get recommended fashion models error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: error instanceof Error ? error.message : 'Failed to fetch recommended fashion models' 
       });
     }
   });
@@ -1738,24 +1790,24 @@ async function processAIImage(imageUrl: string): Promise<string> {
   }
 }
 
-// Smart mannequin selection function
-function selectBestMannequin(
-  allMannequins: any[], 
+// Smart fashion model selection function
+function selectBestFashionModel(
+  allFashionModels: any[], 
   preferredGender: string, 
   garmentType: string
 ): any | null {
-  if (allMannequins.length === 0) {
+  if (allFashionModels.length === 0) {
     return null;
   }
 
-  // Score mannequins based on multiple criteria
-  const scoredMannequins = allMannequins.map(mannequin => {
+  // Score fashion models based on multiple criteria
+  const scoredModels = allFashionModels.map(model => {
     let score = 0;
     
     // Gender matching (highest priority)
-    if (mannequin.gender === preferredGender) {
+    if (model.gender === preferredGender) {
       score += 100;
-    } else if (mannequin.gender === 'unisex') {
+    } else if (model.gender === 'unisex') {
       score += 80; // Unisex is good fallback
     } else {
       score += 20; // Wrong gender gets low score
@@ -1763,30 +1815,39 @@ function selectBestMannequin(
     
     // Category matching (medium priority)
     const garmentCategory = mapGarmentToCategory(garmentType);
-    if (mannequin.category === garmentCategory) {
+    if (model.category === garmentCategory) {
       score += 50; // Perfect category match
-    } else if (mannequin.category === 'general') {
+    } else if (model.category === 'general') {
       score += 30; // General category is good fallback
     }
     
+    // Featured status bonus (medium priority)
+    if (model.isFeatured) {
+      score += 40; // Featured models get priority
+    }
+    
     // Sort order (lower sort order = higher priority)
-    score += Math.max(0, 20 - (mannequin.sortOrder || 0));
+    score += Math.max(0, 20 - (model.sortOrder || 0));
     
-    // Add small random factor for variety (0-10 points)
-    score += Math.random() * 10;
+    // Usage-based scoring (reward popular models slightly)
+    const usageBonus = Math.min(10, (model.usage || 0) * 0.1);
+    score += usageBonus;
     
-    return { mannequin, score };
+    // Add small random factor for variety (0-5 points, less than before)
+    score += Math.random() * 5;
+    
+    return { model, score };
   });
   
   // Sort by score (highest first) and return the best match
-  scoredMannequins.sort((a, b) => b.score - a.score);
+  scoredModels.sort((a, b) => b.score - a.score);
   
-  console.log(`Mannequin selection scores for ${preferredGender} ${garmentType}:`);
-  scoredMannequins.slice(0, 3).forEach((item, index) => {
-    console.log(`  ${index + 1}. ${item.mannequin.name} (${item.mannequin.gender}, ${item.mannequin.category}): ${item.score.toFixed(1)}`);
+  console.log(`Fashion model selection scores for ${preferredGender} ${garmentType}:`);
+  scoredModels.slice(0, 3).forEach((item, index) => {
+    console.log(`  ${index + 1}. ${item.model.name} (${item.model.gender}, ${item.model.category}): ${item.score.toFixed(1)}`);
   });
   
-  return scoredMannequins[0]?.mannequin || null;
+  return scoredModels[0]?.model || null;
 }
 
 // Helper function to map garment types to categories
@@ -1815,7 +1876,7 @@ async function processVirtualTryOn(
 ): Promise<{ success: boolean; processedImageUrl: string; message: string }> {
   try {
     // Get appropriate mannequin from database with smart selection
-    const allActiveMannequins = await storage.getActiveMannequins();
+    const allActiveMannequins = await storage.getActiveFashionModels();
     
     // Normalize gender mapping to handle various input formats
     const g = (mannequinGender || 'unisex').toLowerCase();
@@ -1823,7 +1884,7 @@ async function processVirtualTryOn(
                         ['men', 'male'].includes(g) ? 'men' : 'unisex';
     
     // Smart mannequin selection based on garment type and gender
-    const selectedMannequin = selectBestMannequin(allActiveMannequins, genderFilter, garmentType);
+    const selectedMannequin = selectBestFashionModel(allActiveMannequins, genderFilter, garmentType);
     
     let modelImageUrl;
     if (selectedMannequin) {
