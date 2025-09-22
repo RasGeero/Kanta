@@ -13,11 +13,11 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { productApi, userApi, orderApi, reportApi, mannequinApi } from "@/services/api";
+import { productApi, userApi, orderApi, reportApi, fashionModelApi } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
 import { insertFashionModelSchema } from "@shared/schema";
 import { z } from "zod";
-import type { ProductWithSeller, Mannequin } from "@shared/schema";
+import type { ProductWithSeller, FashionModel } from "@shared/schema";
 
 // Form schema for mannequin creation/editing
 const mannequinFormSchema = insertFashionModelSchema.extend({
@@ -32,7 +32,7 @@ export default function AdminDashboard() {
   const [selectedProduct, setSelectedProduct] = useState<ProductWithSeller | null>(null);
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
   const [isMannequinModalOpen, setIsMannequinModalOpen] = useState(false);
-  const [selectedMannequin, setSelectedMannequin] = useState<Mannequin | null>(null);
+  const [selectedMannequin, setSelectedMannequin] = useState<FashionModel | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { toast } = useToast();
@@ -60,8 +60,8 @@ export default function AdminDashboard() {
   });
 
   const { data: mannequins = [], isLoading: isLoadingMannequins } = useQuery({
-    queryKey: ['/api/mannequins'],
-    queryFn: () => mannequinApi.getAllMannequins(),
+    queryKey: ['/api/fashion-models'],
+    queryFn: () => fashionModelApi.getAllFashionModels(),
   });
 
   // Mannequin form
@@ -144,13 +144,13 @@ export default function AdminDashboard() {
   // Toggle mannequin status mutation
   const toggleMannequinMutation = useMutation({
     mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) => 
-      mannequinApi.toggleMannequinStatus(id, isActive),
+      fashionModelApi.toggleFashionModelStatus(id, isActive),
     onSuccess: () => {
       toast({
         title: "Mannequin updated",
         description: "Mannequin status has been updated.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/mannequins'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/fashion-models'] });
     },
     onError: () => {
       toast({
@@ -163,13 +163,13 @@ export default function AdminDashboard() {
 
   // Delete mannequin mutation
   const deleteMannequinMutation = useMutation({
-    mutationFn: (id: string) => mannequinApi.deleteMannequin(id),
+    mutationFn: (id: string) => fashionModelApi.deleteFashionModel(id),
     onSuccess: () => {
       toast({
         title: "Mannequin deleted",
         description: "Mannequin has been deleted successfully.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/mannequins'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/fashion-models'] });
     },
     onError: () => {
       toast({
@@ -182,13 +182,13 @@ export default function AdminDashboard() {
 
   // Create mannequin mutation
   const createMannequinMutation = useMutation({
-    mutationFn: (data: FormData) => mannequinApi.createMannequin(data),
+    mutationFn: (data: FormData) => fashionModelApi.createFashionModel(data),
     onSuccess: () => {
       toast({
         title: "Mannequin created",
         description: "Mannequin has been created successfully.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/mannequins'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/fashion-models'] });
       setIsMannequinModalOpen(false);
       mannequinForm.reset();
       setImageFile(null);
@@ -206,13 +206,13 @@ export default function AdminDashboard() {
   // Update mannequin mutation
   const updateMannequinMutation = useMutation({
     mutationFn: ({ id, data }: { id: string, data: FormData }) => 
-      mannequinApi.updateMannequin(id, data),
+      fashionModelApi.updateFashionModel(id, data),
     onSuccess: () => {
       toast({
         title: "Mannequin updated",
         description: "Mannequin has been updated successfully.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/mannequins'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/fashion-models'] });
       setIsMannequinModalOpen(false);
       setSelectedMannequin(null);
       mannequinForm.reset();
@@ -256,7 +256,7 @@ export default function AdminDashboard() {
     setIsMannequinModalOpen(true);
   };
 
-  const handleEditMannequin = (mannequin: Mannequin) => {
+  const handleEditMannequin = (mannequin: FashionModel) => {
     setSelectedMannequin(mannequin);
     mannequinForm.reset({
       name: mannequin.name,
