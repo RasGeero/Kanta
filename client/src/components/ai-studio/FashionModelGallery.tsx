@@ -45,28 +45,30 @@ export default function FashionModelGallery({
   // Get recommended models for quick selection
   const buildRecommendedQueryString = () => {
     const params = new URLSearchParams();
-    if (garmentCategory) params.append('garmentCategory', garmentCategory);
+    if (garmentCategory) params.append('garmentType', garmentCategory);
     if (preferredGender) params.append('gender', preferredGender);
     return params.toString();
   };
 
-  const { data: recommendedModels = [] } = useQuery<FashionModel[]>({
+  const { data: recommendedModels = [] } = useQuery({
     queryKey: [`/api/fashion-models/recommended?${buildRecommendedQueryString()}`],
-    enabled: true // Always enabled, let backend handle empty recommendations
+    enabled: Boolean(garmentCategory && preferredGender), // Only when both params are available
+    select: (res: any) => res.data || [] as FashionModel[]
   });
 
   // Auto-select recommended model if none selected and we have recommendations
+  // Note: Primary auto-selection happens in AI Studio when category changes
+  // This is backup auto-selection for when gallery is opened directly
   useEffect(() => {
-    if (!selectedModel && recommendedModels.length > 0) {
+    if (!selectedModel && recommendedModels.length > 0 && garmentCategory) {
       onModelSelect(recommendedModels[0]);
     }
-  }, [recommendedModels, selectedModel, onModelSelect]);
+  }, [recommendedModels, selectedModel, onModelSelect, garmentCategory]);
 
   const filteredModels = models.filter(model => {
     // Text search
     const matchesSearch = searchQuery === "" || 
       model.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      model.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       model.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
     
     // Gender filter (client-side backup for instant UI feedback)
@@ -108,7 +110,7 @@ export default function FashionModelGallery({
           Recommended for You
         </h3>
         <div className="grid grid-cols-2 gap-2">
-          {recommendedModels.slice(0, 4).map((model) => (
+          {recommendedModels.slice(0, 4).map((model: FashionModel) => (
             <ModelCard key={model.id} model={model} size="medium" showRecommended />
           ))}
         </div>
@@ -168,7 +170,7 @@ export default function FashionModelGallery({
             </div>
 
             {/* Usage indicator */}
-            {model.usageCount > 10 && (
+            {(model.usage || 0) > 10 && (
               <div className="absolute bottom-1 right-1">
                 <Badge variant="outline" className="text-xs">
                   <TrendingUp className="h-3 w-3 mr-1" />
@@ -317,11 +319,9 @@ export default function FashionModelGallery({
               <div className="text-sm text-muted-foreground">
                 {selectedModel.gender} • {selectedModel.category}
               </div>
-              {selectedModel.description && (
-                <div className="text-xs text-muted-foreground truncate">
-                  {selectedModel.description}
-                </div>
-              )}
+              <div className="text-xs text-muted-foreground truncate">
+                {selectedModel.ethnicity} • {selectedModel.bodyType} build
+              </div>
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   ArrowLeft, 
   Upload, 
@@ -14,7 +14,7 @@ import {
   Crown
 } from "lucide-react";
 import { useLocation } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -53,6 +53,27 @@ export default function AIStudio() {
 
   // Mock seller ID - in production, get from authentication
   const sellerId = "seller-id-placeholder";
+
+  // Smart model recommendation based on category
+  const buildRecommendedQueryString = () => {
+    const params = new URLSearchParams();
+    if (category) params.append('garmentType', category);
+    params.append('gender', 'unisex'); // Default gender for auto-selection
+    return params.toString();
+  };
+
+  const { data: recommendedModels = [] } = useQuery({
+    queryKey: [`/api/fashion-models/recommended?${buildRecommendedQueryString()}`],
+    enabled: !!category, // Only fetch when category is selected
+    select: (res: any) => res.data || [] as FashionModel[]
+  });
+
+  // Auto-select recommended model when category changes (if no model is selected)
+  useEffect(() => {
+    if (category && !selectedModel && recommendedModels.length > 0) {
+      setSelectedModel(recommendedModels[0]);
+    }
+  }, [category, recommendedModels, selectedModel]);
 
   // Mutation for creating product
   const createProductMutation = useMutation({

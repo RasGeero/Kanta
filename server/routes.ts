@@ -1494,6 +1494,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get recommended fashion models based on garment type and gender
+  app.get("/api/fashion-models/recommended", async (req, res) => {
+    try {
+      const { garmentType, gender, limit } = req.query;
+      
+      // Validate required parameters
+      if (!garmentType || !gender) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'garmentType and gender are required parameters' 
+        });
+      }
+      
+      const limitNum = limit ? parseInt(limit as string, 10) : 3;
+      
+      if (isNaN(limitNum) || limitNum < 1 || limitNum > 10) {
+        return res.status(400).json({ 
+          success: false, 
+          message: 'limit must be a number between 1 and 10' 
+        });
+      }
+      
+      const recommendedModels = await storage.getRecommendedFashionModels(
+        garmentType as string, 
+        gender as string, 
+        limitNum
+      );
+      
+      res.json({ success: true, data: recommendedModels });
+    } catch (error) {
+      console.error('Get recommended fashion models error:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: error instanceof Error ? error.message : 'Failed to fetch recommended fashion models' 
+      });
+    }
+  });
+
   // Get specific fashion model by ID
   app.get("/api/fashion-models/:id", async (req, res) => {
     try {
@@ -1772,43 +1810,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get recommended fashion models based on garment type and gender
-  app.get("/api/fashion-models/recommended", async (req, res) => {
-    try {
-      const { garmentType, gender, limit } = req.query;
-      
-      // Validate required parameters
-      if (!garmentType || !gender) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'garmentType and gender are required parameters' 
-        });
-      }
-      
-      const limitNum = limit ? parseInt(limit as string, 10) : 3;
-      
-      if (isNaN(limitNum) || limitNum < 1 || limitNum > 10) {
-        return res.status(400).json({ 
-          success: false, 
-          message: 'limit must be a number between 1 and 10' 
-        });
-      }
-      
-      const recommendedModels = await storage.getRecommendedFashionModels(
-        garmentType as string, 
-        gender as string, 
-        limitNum
-      );
-      
-      res.json({ success: true, data: recommendedModels });
-    } catch (error) {
-      console.error('Get recommended fashion models error:', error);
-      res.status(500).json({ 
-        success: false, 
-        message: error instanceof Error ? error.message : 'Failed to fetch recommended fashion models' 
-      });
-    }
-  });
 
   // Test endpoint for AI functionality
   app.get("/api/ai/test", async (req, res) => {
