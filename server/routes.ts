@@ -1272,7 +1272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/ai/mannequin-overlay", async (req, res) => {
     try {
       res.set('Content-Type', 'application/json');
-      const { imageUrl, garmentType, mannequinGender } = req.body;
+      const { imageUrl, garmentType, mannequinGender, fashionModel } = req.body;
       
       if (!imageUrl) {
         return res.status(400).json({
@@ -1306,13 +1306,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let modelImageUrl;
         let selectedModel = null;
         
-        if (allActiveFashionModels.length > 0) {
-          // Use smart selection to get the best matching fashion model
+        if (fashionModel && fashionModel.id) {
+          // Use the provided fashion model from the client
+          selectedModel = fashionModel;
+          modelImageUrl = fashionModel.imageUrl;
+          console.log(`Using client-selected fashion model: ${fashionModel.name} (${fashionModel.gender})`);
+          
+          // Track usage of the selected model
+          await storage.incrementFashionModelUsage(fashionModel.id);
+        } else if (allActiveFashionModels.length > 0) {
+          // Fall back to smart selection if no fashion model provided
           selectedModel = selectBestFashionModel(allActiveFashionModels, genderFilter, garmentType);
           
           if (selectedModel) {
             modelImageUrl = selectedModel.imageUrl;
-            console.log(`Using fashion model: ${selectedModel.name} (${selectedModel.gender}) for gender: ${mannequinGender}`);
+            console.log(`Using smart-selected fashion model: ${selectedModel.name} (${selectedModel.gender}) for gender: ${mannequinGender}`);
             
             // Track usage of the selected model
             await storage.incrementFashionModelUsage(selectedModel.id);

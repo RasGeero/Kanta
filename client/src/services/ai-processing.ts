@@ -1,3 +1,5 @@
+import { FashionModel } from "@/types/models";
+
 export interface AIProcessingResult {
   success: boolean;
   processedImageUrl?: string;
@@ -67,12 +69,14 @@ export const aiProcessing = {
   applyMannequinOverlay: async (
     backgroundRemovedImageUrl: string,
     garmentType: 'dress' | 'shirt' | 'pants' | 'jacket' | 'other' = 'other',
-    mannequinGender: 'male' | 'female' | 'unisex' = 'unisex'
+    mannequinGender: 'male' | 'female' | 'unisex' = 'unisex',
+    fashionModel?: FashionModel | null
   ): Promise<AIProcessingResult> => {
     try {
       console.log('Processing mannequin overlay with Fashn.ai API...', {
         garmentType,
         mannequinGender,
+        fashionModel: fashionModel ? `${fashionModel.name} (${fashionModel.id})` : 'none',
       });
       
       // Check if Fashn.ai API key is available
@@ -85,6 +89,15 @@ export const aiProcessing = {
           imageUrl: backgroundRemovedImageUrl,
           garmentType,
           mannequinGender,
+          fashionModel: fashionModel ? {
+            id: fashionModel.id,
+            name: fashionModel.name,
+            imageUrl: fashionModel.imageUrl,
+            gender: fashionModel.gender,
+            bodyType: fashionModel.bodyType,
+            ethnicity: fashionModel.ethnicity,
+            category: fashionModel.category
+          } : null,
         }),
       });
 
@@ -136,7 +149,8 @@ export const aiProcessing = {
   processProductImage: async (
     imageFile: File,
     productCategory: string,
-    productGender: string
+    productGender: string,
+    fashionModel?: FashionModel | null
   ): Promise<AIProcessingResult> => {
     try {
       console.log('Starting complete AI processing pipeline...');
@@ -155,7 +169,8 @@ export const aiProcessing = {
       const mannequinResult = await aiProcessing.applyMannequinOverlay(
         backgroundRemovalResult.processedImageUrl,
         garmentType,
-        mannequinGender
+        mannequinGender,
+        fashionModel
       );
       
       return {

@@ -188,7 +188,8 @@ export default function AIStudio() {
       const result = await aiProcessing.processProductImage(
         garmentImage,
         category,
-        genderPreference
+        genderPreference,
+        selectedModel
       );
       
       if (result.success && result.processedImageUrl) {
