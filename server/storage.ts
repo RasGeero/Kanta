@@ -17,8 +17,8 @@ import {
   type InsertReport,
   type CartItem,
   type InsertCartItem,
-  type Mannequin,
-  type InsertMannequin,
+  type FashionModel,
+  type InsertFashionModel,
   users,
   products,
   orders,
@@ -27,7 +27,7 @@ import {
   wishlist,
   reports,
   cartItems,
-  mannequins
+  fashionModels
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ilike, gte, lte, desc, asc, count, avg, sql } from "drizzle-orm";
@@ -107,22 +107,26 @@ export interface IStorage {
   getReports(status?: string): Promise<Report[]>;
   updateReportStatus(id: string, status: string): Promise<boolean>;
 
-  // Mannequin operations
-  getMannequin(id: string): Promise<Mannequin | undefined>;
-  getAllMannequins(): Promise<Mannequin[]>;
-  getActiveMannequins(): Promise<Mannequin[]>;
-  getMannequinsByGender(gender: string): Promise<Mannequin[]>;
-  searchMannequins(query: {
+  // Fashion Model operations
+  getFashionModel(id: string): Promise<FashionModel | undefined>;
+  getAllFashionModels(): Promise<FashionModel[]>;
+  getActiveFashionModels(): Promise<FashionModel[]>;
+  getFeaturedFashionModels(): Promise<FashionModel[]>;
+  getFashionModelsByGender(gender: string): Promise<FashionModel[]>;
+  searchFashionModels(query: {
     gender?: string;
     bodyType?: string;
     ethnicity?: string;
     category?: string;
+    skinTone?: string;
     tags?: string[];
-  }): Promise<Mannequin[]>;
-  createMannequin(mannequin: InsertMannequin): Promise<Mannequin>;
-  updateMannequin(id: string, updates: Partial<Mannequin>): Promise<Mannequin | undefined>;
-  deleteMannequin(id: string): Promise<boolean>;
-  toggleMannequinStatus(id: string, isActive: boolean): Promise<boolean>;
+  }): Promise<FashionModel[]>;
+  getRecommendedFashionModels(garmentType: string, gender: string, limit?: number): Promise<FashionModel[]>;
+  createFashionModel(fashionModel: InsertFashionModel): Promise<FashionModel>;
+  updateFashionModel(id: string, updates: Partial<FashionModel>): Promise<FashionModel | undefined>;
+  deleteFashionModel(id: string): Promise<boolean>;
+  toggleFashionModelStatus(id: string, isActive: boolean): Promise<boolean>;
+  incrementFashionModelUsage(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -230,43 +234,137 @@ export class DatabaseStorage implements IStorage {
 
       await db.insert(products).values(seedProducts);
 
-      // Insert sample mannequins
-      const seedMannequins = [
+      // Insert sample fashion models
+      const seedFashionModels = [
         {
-          name: "Professional Male Model",
-          imageUrl: "https://res.cloudinary.com/demo/image/upload/c_fill,h_600,w_400/sample_male_model.png",
-          cloudinaryPublicId: "sample_male_model",
+          name: "Marcus - Professional Model",
+          imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=600&fit=crop&crop=face",
+          thumbnailUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=300&fit=crop&crop=face",
+          cloudinaryPublicId: "fashion_model_marcus_professional",
           gender: "men",
           bodyType: "athletic",
-          ethnicity: "diverse",
+          ethnicity: "caucasian",
           ageRange: "adult",
           pose: "front",
           category: "formal",
-          height: 180,
+          height: 185,
+          skinTone: "light",
+          hairStyle: "short",
           hasTransparentBackground: true,
           isActive: true,
+          isFeatured: true,
           sortOrder: 1,
-          tags: ["professional", "business", "formal"]
+          usage: 0,
+          tags: ["professional", "business", "formal", "suit"]
         },
         {
-          name: "Elegant Female Model",
-          imageUrl: "https://res.cloudinary.com/demo/image/upload/c_fill,h_600,w_400/sample_female_model.png",
-          cloudinaryPublicId: "sample_female_model",
+          name: "Sophia - Elegant Model",
+          imageUrl: "https://images.unsplash.com/photo-1494790108755-2616b612b7cc?w=400&h=600&fit=crop&crop=face",
+          thumbnailUrl: "https://images.unsplash.com/photo-1494790108755-2616b612b7cc?w=200&h=300&fit=crop&crop=face",
+          cloudinaryPublicId: "fashion_model_sophia_elegant",
           gender: "women",
           bodyType: "slim",
+          ethnicity: "caucasian",
+          ageRange: "adult",
+          pose: "front",
+          category: "general",
+          height: 172,
+          skinTone: "light",
+          hairStyle: "long",
+          hasTransparentBackground: true,
+          isActive: true,
+          isFeatured: true,
+          sortOrder: 2,
+          usage: 0,
+          tags: ["elegant", "fashion", "versatile", "dress"]
+        },
+        {
+          name: "Zara - Casual Lifestyle",
+          imageUrl: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=400&h=600&fit=crop&crop=face",
+          thumbnailUrl: "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=200&h=300&fit=crop&crop=face",
+          cloudinaryPublicId: "fashion_model_zara_casual",
+          gender: "women",
+          bodyType: "average",
           ethnicity: "african",
+          ageRange: "adult",
+          pose: "front",
+          category: "casual",
+          height: 168,
+          skinTone: "dark",
+          hairStyle: "medium",
+          hasTransparentBackground: true,
+          isActive: true,
+          isFeatured: false,
+          sortOrder: 3,
+          usage: 0,
+          tags: ["casual", "street-style", "everyday", "relaxed"]
+        },
+        {
+          name: "David - Athletic Model",
+          imageUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=600&fit=crop&crop=face",
+          thumbnailUrl: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=300&fit=crop&crop=face",
+          cloudinaryPublicId: "fashion_model_david_athletic",
+          gender: "men",
+          bodyType: "athletic",
+          ethnicity: "caucasian",
+          ageRange: "adult",
+          pose: "front",
+          category: "athletic",
+          height: 180,
+          skinTone: "medium",
+          hairStyle: "short",
+          hasTransparentBackground: true,
+          isActive: true,
+          isFeatured: false,
+          sortOrder: 4,
+          usage: 0,
+          tags: ["athletic", "fitness", "sports", "casual"]
+        },
+        {
+          name: "Maya - Evening Elegance",
+          imageUrl: "https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=400&h=600&fit=crop&crop=face",
+          thumbnailUrl: "https://images.unsplash.com/photo-1489424731084-a5d8b219a5bb?w=200&h=300&fit=crop&crop=face",
+          cloudinaryPublicId: "fashion_model_maya_evening",
+          gender: "women",
+          bodyType: "slim",
+          ethnicity: "asian",
+          ageRange: "adult",
+          pose: "front",
+          category: "evening",
+          height: 175,
+          skinTone: "medium",
+          hairStyle: "long",
+          hasTransparentBackground: true,
+          isActive: true,
+          isFeatured: true,
+          sortOrder: 5,
+          usage: 0,
+          tags: ["evening", "elegant", "formal", "gown"]
+        },
+        {
+          name: "Alex - Unisex Model",
+          imageUrl: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=600&fit=crop&crop=face",
+          thumbnailUrl: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=200&h=300&fit=crop&crop=face",
+          cloudinaryPublicId: "fashion_model_alex_unisex",
+          gender: "unisex",
+          bodyType: "slim",
+          ethnicity: "diverse",
           ageRange: "adult",
           pose: "front",
           category: "general",
           height: 170,
+          skinTone: "medium",
+          hairStyle: "short",
           hasTransparentBackground: true,
           isActive: true,
-          sortOrder: 2,
-          tags: ["elegant", "fashion", "general"]
+          isFeatured: false,
+          sortOrder: 6,
+          usage: 0,
+          tags: ["unisex", "versatile", "modern", "trendy"]
         }
       ];
 
-      await db.insert(mannequins).values(seedMannequins);
+      await db.insert(fashionModels).values(seedFashionModels);
     }
   }
 
@@ -869,98 +967,149 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount ?? 0) > 0;
   }
 
-  // Mannequin operations
-  async getMannequin(id: string): Promise<Mannequin | undefined> {
-    const [mannequin] = await db.select().from(mannequins).where(eq(mannequins.id, id));
-    return mannequin || undefined;
+  // Fashion Model operations
+  async getFashionModel(id: string): Promise<FashionModel | undefined> {
+    const [fashionModel] = await db.select().from(fashionModels).where(eq(fashionModels.id, id));
+    return fashionModel || undefined;
   }
 
-  async getAllMannequins(): Promise<Mannequin[]> {
-    return db.select().from(mannequins).orderBy(asc(mannequins.sortOrder), desc(mannequins.createdAt));
+  async getAllFashionModels(): Promise<FashionModel[]> {
+    return db.select().from(fashionModels).orderBy(asc(fashionModels.sortOrder), desc(fashionModels.createdAt));
   }
 
-  async getActiveMannequins(): Promise<Mannequin[]> {
+  async getActiveFashionModels(): Promise<FashionModel[]> {
     return db
       .select()
-      .from(mannequins)
-      .where(eq(mannequins.isActive, true))
-      .orderBy(asc(mannequins.sortOrder), desc(mannequins.createdAt));
+      .from(fashionModels)
+      .where(eq(fashionModels.isActive, true))
+      .orderBy(asc(fashionModels.sortOrder), desc(fashionModels.createdAt));
   }
 
-  async getMannequinsByGender(gender: string): Promise<Mannequin[]> {
+  async getFeaturedFashionModels(): Promise<FashionModel[]> {
     return db
       .select()
-      .from(mannequins)
+      .from(fashionModels)
+      .where(and(eq(fashionModels.isActive, true), eq(fashionModels.isFeatured, true)))
+      .orderBy(asc(fashionModels.sortOrder), desc(fashionModels.usage));
+  }
+
+  async getFashionModelsByGender(gender: string): Promise<FashionModel[]> {
+    return db
+      .select()
+      .from(fashionModels)
       .where(and(
-        eq(mannequins.isActive, true),
-        sql`(${mannequins.gender} = ${gender} OR ${mannequins.gender} = 'unisex')`
+        eq(fashionModels.isActive, true),
+        sql`(${fashionModels.gender} = ${gender} OR ${fashionModels.gender} = 'unisex')`
       ))
-      .orderBy(asc(mannequins.sortOrder), desc(mannequins.createdAt));
+      .orderBy(asc(fashionModels.sortOrder), desc(fashionModels.createdAt));
   }
 
-  async searchMannequins(query: {
+  async searchFashionModels(query: {
     gender?: string;
     bodyType?: string;
     ethnicity?: string;
     category?: string;
+    skinTone?: string;
     tags?: string[];
-  }): Promise<Mannequin[]> {
-    let conditions = [eq(mannequins.isActive, true)];
+  }): Promise<FashionModel[]> {
+    let conditions = [eq(fashionModels.isActive, true)];
 
     if (query.gender) {
       conditions.push(
-        sql`(${mannequins.gender} = ${query.gender} OR ${mannequins.gender} = 'unisex')`
+        sql`(${fashionModels.gender} = ${query.gender} OR ${fashionModels.gender} = 'unisex')`
       );
     }
 
     if (query.bodyType) {
-      conditions.push(eq(mannequins.bodyType, query.bodyType));
+      conditions.push(eq(fashionModels.bodyType, query.bodyType));
     }
 
     if (query.ethnicity) {
-      conditions.push(eq(mannequins.ethnicity, query.ethnicity));
+      conditions.push(eq(fashionModels.ethnicity, query.ethnicity));
     }
 
     if (query.category) {
-      conditions.push(eq(mannequins.category, query.category));
+      conditions.push(eq(fashionModels.category, query.category));
+    }
+
+    if (query.skinTone) {
+      conditions.push(eq(fashionModels.skinTone, query.skinTone));
     }
 
     // Note: Tags filtering would require JSON operators in production
     // For now, we'll skip complex tag filtering in database implementation
 
-    return db.select().from(mannequins)
+    return db.select().from(fashionModels)
       .where(and(...conditions))
-      .orderBy(asc(mannequins.sortOrder), desc(mannequins.createdAt));
+      .orderBy(asc(fashionModels.sortOrder), desc(fashionModels.createdAt));
   }
 
-  async createMannequin(insertMannequin: InsertMannequin): Promise<Mannequin> {
-    const [mannequin] = await db.insert(mannequins).values({
-      ...insertMannequin,
-      tags: [...(insertMannequin.tags ?? [])]
+  async getRecommendedFashionModels(garmentType: string, gender: string, limit: number = 3): Promise<FashionModel[]> {
+    // Smart recommendation based on garment type and gender
+    const categoryMap: Record<string, string> = {
+      'dress': 'evening',
+      'shirt': 'formal',
+      'pants': 'casual',
+      'jacket': 'formal',
+      'suit': 'formal',
+      'athletic': 'athletic',
+      'casual': 'casual'
+    };
+
+    const preferredCategory = categoryMap[garmentType.toLowerCase()] || 'general';
+    
+    return db
+      .select()
+      .from(fashionModels)
+      .where(and(
+        eq(fashionModels.isActive, true),
+        sql`(${fashionModels.gender} = ${gender} OR ${fashionModels.gender} = 'unisex')`,
+        sql`(${fashionModels.category} = ${preferredCategory} OR ${fashionModels.category} = 'general')`
+      ))
+      .orderBy(
+        sql`CASE WHEN ${fashionModels.category} = ${preferredCategory} THEN 0 ELSE 1 END`,
+        sql`CASE WHEN ${fashionModels.isFeatured} = true THEN 0 ELSE 1 END`,
+        asc(fashionModels.sortOrder),
+        desc(fashionModels.usage)
+      )
+      .limit(limit);
+  }
+
+  async createFashionModel(insertFashionModel: InsertFashionModel): Promise<FashionModel> {
+    const [fashionModel] = await db.insert(fashionModels).values({
+      ...insertFashionModel,
+      tags: [...(insertFashionModel.tags ?? [])]
     }).returning();
-    return mannequin;
+    return fashionModel;
   }
 
-  async updateMannequin(id: string, updates: Partial<Mannequin>): Promise<Mannequin | undefined> {
-    const [mannequin] = await db
-      .update(mannequins)
+  async updateFashionModel(id: string, updates: Partial<FashionModel>): Promise<FashionModel | undefined> {
+    const [fashionModel] = await db
+      .update(fashionModels)
       .set({ ...updates, updatedAt: new Date() })
-      .where(eq(mannequins.id, id))
+      .where(eq(fashionModels.id, id))
       .returning();
-    return mannequin || undefined;
+    return fashionModel || undefined;
   }
 
-  async deleteMannequin(id: string): Promise<boolean> {
-    const result = await db.delete(mannequins).where(eq(mannequins.id, id));
+  async deleteFashionModel(id: string): Promise<boolean> {
+    const result = await db.delete(fashionModels).where(eq(fashionModels.id, id));
     return (result.rowCount ?? 0) > 0;
   }
 
-  async toggleMannequinStatus(id: string, isActive: boolean): Promise<boolean> {
+  async toggleFashionModelStatus(id: string, isActive: boolean): Promise<boolean> {
     const result = await db
-      .update(mannequins)
+      .update(fashionModels)
       .set({ isActive, updatedAt: new Date() })
-      .where(eq(mannequins.id, id));
+      .where(eq(fashionModels.id, id));
     return (result.rowCount ?? 0) > 0;
+  }
+
+  async incrementFashionModelUsage(id: string): Promise<void> {
+    await db
+      .update(fashionModels)
+      .set({ usage: sql`${fashionModels.usage} + 1`, updatedAt: new Date() })
+      .where(eq(fashionModels.id, id));
   }
 }
 
