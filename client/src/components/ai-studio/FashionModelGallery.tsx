@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -6,8 +6,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Heart, Search, Filter, Star, TrendingUp, Users, Crown } from "lucide-react";
+import { Heart, Search, Filter, Star, TrendingUp, Users, Crown, Grid, List, X, SlidersHorizontal, ArrowUpDown } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { FashionModel } from "@/types/models";
 
 interface FashionModelGalleryProps {
@@ -26,20 +27,59 @@ export default function FashionModelGallery({
   const [searchQuery, setSearchQuery] = useState("");
   const [genderFilter, setGenderFilter] = useState<string>(preferredGender || "all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [bodyTypeFilter, setBodyTypeFilter] = useState<string>("all");
+  const [ethnicityFilter, setEthnicityFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<"featured" | "popularity" | "name" | "recent">("featured");
   const [viewMode, setViewMode] = useState<"gallery" | "list">("gallery");
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+  // Debounced search query
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Smart defaults: Update filters when garment category changes
+  useEffect(() => {
+    if (garmentCategory) {
+      // Auto-set category filter based on garment category
+      const categoryMapping: Record<string, string> = {
+        'dress': 'formal',
+        'shirt': 'fashion', 
+        'pants': 'fashion',
+        'jacket': 'fashion',
+        'activewear': 'athletic',
+        'formal': 'formal'
+      };
+      const suggestedCategory = categoryMapping[garmentCategory.toLowerCase()] || 'all';
+      setCategoryFilter(suggestedCategory);
+    }
+  }, [garmentCategory]);
+
+  // Update gender filter when preferred gender changes
+  useEffect(() => {
+    if (preferredGender && preferredGender !== genderFilter) {
+      setGenderFilter(preferredGender);
+    }
+  }, [preferredGender]);
 
   // Fetch fashion models from API with proper query string
   const buildQueryString = () => {
     const params = new URLSearchParams();
-    if (searchQuery) params.append('search', searchQuery);
+    if (debouncedSearchQuery) params.append('search', debouncedSearchQuery);
     if (genderFilter !== 'all') params.append('gender', genderFilter);
     if (categoryFilter !== 'all') params.append('category', categoryFilter);
     params.append('active', 'true');
     return params.toString();
   };
 
-  const { data: models = [], isLoading, error } = useQuery<FashionModel[]>({
-    queryKey: [`/api/fashion-models?${buildQueryString()}`],
+  const { data: models = [], isLoading, error } = useQuery({
+    queryKey: ['/api/fashion-models', buildQueryString()],
+    select: (res: any) => res?.data || [] as FashionModel[]
   });
 
   // Get recommended models for quick selection
@@ -51,9 +91,9 @@ export default function FashionModelGallery({
   };
 
   const { data: recommendedModels = [] } = useQuery({
-    queryKey: [`/api/fashion-models/recommended?${buildRecommendedQueryString()}`],
+    queryKey: ['/api/fashion-models/recommended', buildRecommendedQueryString()],
     enabled: Boolean(garmentCategory && preferredGender), // Only when both params are available
-    select: (res: any) => res.data || [] as FashionModel[]
+    select: (res: any) => res?.data || [] as FashionModel[]
   });
 
   // Auto-select recommended model if none selected and we have recommendations
@@ -65,23 +105,75 @@ export default function FashionModelGallery({
     }
   }, [recommendedModels, selectedModel, onModelSelect, garmentCategory]);
 
-  const filteredModels = models.filter(model => {
-    // Text search
-    const matchesSearch = searchQuery === "" || 
-      model.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      model.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    // Gender filter (client-side backup for instant UI feedback)
-    const matchesGender = genderFilter === 'all' || model.gender === genderFilter;
-    
-    // Category filter (client-side backup for instant UI feedback)
-    const matchesCategory = categoryFilter === 'all' || model.category === categoryFilter;
-    
-    return matchesSearch && matchesGender && matchesCategory;
-  });
+  // Enhanced filtering and sorting with useMemo for performance
+  const filteredAndSortedModels = useMemo(() => {
+    let filtered = models.filter(model => {
+      // Text search
+      const matchesSearch = debouncedSearchQuery === "" || 
+        model.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        model.tags.some(tag => tag.toLowerCase().includes(debouncedSearchQuery.toLowerCase()));
+      
+      // Gender filter (client-side backup for instant UI feedback)
+      const matchesGender = genderFilter === 'all' || model.gender === genderFilter;
+      
+      // Category filter (client-side backup for instant UI feedback)
+      const matchesCategory = categoryFilter === 'all' || model.category === categoryFilter;
+      
+      // Body type filter
+      const matchesBodyType = bodyTypeFilter === 'all' || model.bodyType === bodyTypeFilter;
+      
+      // Ethnicity filter
+      const matchesEthnicity = ethnicityFilter === 'all' || model.ethnicity === ethnicityFilter;
+      
+      return matchesSearch && matchesGender && matchesCategory && matchesBodyType && matchesEthnicity;
+    });
+
+    // Sort the filtered results
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'featured':
+          // Featured models first, then by usage
+          if (a.isFeatured && !b.isFeatured) return -1;
+          if (!a.isFeatured && b.isFeatured) return 1;
+          return (b.usage || 0) - (a.usage || 0);
+        case 'popularity':
+          return (b.usage || 0) - (a.usage || 0);
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'recent':
+          // Sort by id (assuming newer IDs are higher/more recent)
+          return b.id.localeCompare(a.id);
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  }, [models, debouncedSearchQuery, genderFilter, categoryFilter, bodyTypeFilter, ethnicityFilter, sortBy]);
+
+  // Get unique filter options from loaded models
+  const filterOptions = useMemo(() => {
+    const bodyTypes = [...new Set(models.map(m => m.bodyType))].filter(Boolean).sort();
+    const ethnicities = [...new Set(models.map(m => m.ethnicity))].filter(Boolean).sort();
+    return { bodyTypes, ethnicities };
+  }, [models]);
+
+  // Clear all filters function
+  const clearAllFilters = () => {
+    setSearchQuery("");
+    setGenderFilter("all");
+    setCategoryFilter("all");
+    setBodyTypeFilter("all");
+    setEthnicityFilter("all");
+    setSortBy("featured");
+  };
+
+  // Check if any filters are active
+  const hasActiveFilters = searchQuery !== "" || genderFilter !== "all" || categoryFilter !== "all" || 
+                          bodyTypeFilter !== "all" || ethnicityFilter !== "all";
 
   const FeaturedSection = () => {
-    const featuredModels = filteredModels.filter(model => model.isFeatured).slice(0, 3);
+    const featuredModels = filteredAndSortedModels.filter(model => model.isFeatured).slice(0, 3);
     
     if (featuredModels.length === 0) return null;
 
@@ -115,6 +207,82 @@ export default function FashionModelGallery({
           ))}
         </div>
       </div>
+    );
+  };
+
+  const ListModelCard = ({ model }: { model: FashionModel }) => {
+    const isSelected = selectedModel?.id === model.id;
+    
+    return (
+      <Card 
+        className={`cursor-pointer transition-all duration-200 ${
+          isSelected 
+            ? 'ring-2 ring-primary ring-offset-2 shadow-lg' 
+            : 'hover:shadow-md'
+        }`}
+        onClick={() => onModelSelect(model)}
+        data-testid={`fashion-model-list-${model.id}`}
+      >
+        <CardContent className="p-3">
+          <div className="flex items-center gap-3">
+            <div className="w-16 h-20 relative overflow-hidden rounded-lg flex-shrink-0">
+              <img
+                src={model.thumbnailUrl || model.imageUrl}
+                alt={model.name}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+              {model.isFeatured && (
+                <Badge variant="secondary" className="absolute top-1 left-1 text-xs">
+                  <Crown className="h-3 w-3" />
+                </Badge>
+              )}
+            </div>
+            
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <h4 className="font-medium truncate">{model.name}</h4>
+                  <div className="text-sm text-muted-foreground flex items-center gap-1 mt-1">
+                    <Users className="h-3 w-3" />
+                    {model.gender} • {model.category}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {model.ethnicity} • {model.bodyType} build
+                  </div>
+                </div>
+                
+                <div className="flex flex-col items-end gap-1 ml-2">
+                  {(model.usage || 0) > 10 && (
+                    <Badge variant="outline" className="text-xs">
+                      <TrendingUp className="h-3 w-3 mr-1" />
+                      Popular
+                    </Badge>
+                  )}
+                  {model.tags.length > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                      {model.tags.length} tag{model.tags.length !== 1 ? 's' : ''}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {model.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {model.tags.slice(0, 3).map((tag) => (
+                    <Badge key={tag} variant="secondary" className="text-xs">
+                      {tag}
+                    </Badge>
+                  ))}
+                  {model.tags.length > 3 && (
+                    <span className="text-xs text-muted-foreground">+{model.tags.length - 3}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     );
   };
 
@@ -224,14 +392,25 @@ export default function FashionModelGallery({
         <div className="relative">
           <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search models..."
+            placeholder="Search models by name or tags..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
+            className="pl-10 pr-10"
             data-testid="model-search"
           />
+          {searchQuery && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="absolute right-1 top-1 h-8 w-8 p-0"
+              onClick={() => setSearchQuery("")}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
-        
+
+        {/* Basic Filters */}
         <div className="grid grid-cols-2 gap-2">
           <Select value={genderFilter} onValueChange={setGenderFilter}>
             <SelectTrigger data-testid="gender-filter">
@@ -258,6 +437,99 @@ export default function FashionModelGallery({
             </SelectContent>
           </Select>
         </div>
+
+        {/* Control Bar */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className="gap-2"
+              data-testid="toggle-advanced-filters"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              Filters
+              {hasActiveFilters && (
+                <Badge variant="secondary" className="ml-1 h-4 text-xs">
+                  {[searchQuery, genderFilter, categoryFilter, bodyTypeFilter, ethnicityFilter]
+                    .filter(f => f && f !== "all").length}
+                </Badge>
+              )}
+            </Button>
+            
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearAllFilters}
+                className="gap-2"
+                data-testid="clear-filters"
+              >
+                <X className="h-4 w-4" />
+                Clear
+              </Button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Select value={sortBy} onValueChange={(value: any) => setSortBy(value)}>
+              <SelectTrigger className="w-32" data-testid="sort-filter">
+                <ArrowUpDown className="h-4 w-4 mr-2" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="featured">Featured</SelectItem>
+                <SelectItem value="popularity">Popular</SelectItem>
+                <SelectItem value="name">Name</SelectItem>
+                <SelectItem value="recent">Recent</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <ToggleGroup 
+              value={viewMode} 
+              onValueChange={(value: any) => value && setViewMode(value)}
+              type="single"
+              className="border rounded-md"
+            >
+              <ToggleGroupItem value="gallery" size="sm" data-testid="gallery-view">
+                <Grid className="h-4 w-4" />
+              </ToggleGroupItem>
+              <ToggleGroupItem value="list" size="sm" data-testid="list-view">
+                <List className="h-4 w-4" />
+              </ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+        </div>
+
+        {/* Advanced Filters */}
+        {showAdvancedFilters && (
+          <div className="grid grid-cols-2 gap-2 p-3 border rounded-lg bg-muted/30">
+            <Select value={bodyTypeFilter} onValueChange={setBodyTypeFilter}>
+              <SelectTrigger data-testid="bodytype-filter">
+                <SelectValue placeholder="Body Type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Body Types</SelectItem>
+                {filterOptions.bodyTypes.map(type => (
+                  <SelectItem key={type} value={type}>{type}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            
+            <Select value={ethnicityFilter} onValueChange={setEthnicityFilter}>
+              <SelectTrigger data-testid="ethnicity-filter">
+                <SelectValue placeholder="Ethnicity" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Ethnicities</SelectItem>
+                {filterOptions.ethnicities.map(ethnicity => (
+                  <SelectItem key={ethnicity} value={ethnicity}>{ethnicity}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {/* Models Gallery */}
@@ -282,19 +554,30 @@ export default function FashionModelGallery({
               <div>
                 <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
                   <Filter className="h-4 w-4" />
-                  All Models ({filteredModels.length})
+                  All Models ({filteredAndSortedModels.length})
                 </h3>
                 
-                {filteredModels.length === 0 ? (
+                {filteredAndSortedModels.length === 0 ? (
                   <div className="text-center py-8">
                     <Users className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
                     <p className="text-muted-foreground">No models found</p>
                     <p className="text-sm text-muted-foreground">Try adjusting your search or filters</p>
+                    {hasActiveFilters && (
+                      <Button variant="outline" size="sm" onClick={clearAllFilters} className="mt-2">
+                        Clear Filters
+                      </Button>
+                    )}
+                  </div>
+                ) : viewMode === "gallery" ? (
+                  <div className="grid grid-cols-2 gap-3">
+                    {filteredAndSortedModels.map((model) => (
+                      <ModelCard key={model.id} model={model} size="medium" />
+                    ))}
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-3">
-                    {filteredModels.map((model) => (
-                      <ModelCard key={model.id} model={model} size="medium" />
+                  <div className="space-y-2">
+                    {filteredAndSortedModels.map((model) => (
+                      <ListModelCard key={model.id} model={model} />
                     ))}
                   </div>
                 )}
