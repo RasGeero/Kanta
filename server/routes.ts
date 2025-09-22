@@ -1875,25 +1875,28 @@ async function processVirtualTryOn(
   mannequinGender: string
 ): Promise<{ success: boolean; processedImageUrl: string; message: string }> {
   try {
-    // Get appropriate mannequin from database with smart selection
-    const allActiveMannequins = await storage.getActiveFashionModels();
+    // Get appropriate fashion models from database with smart selection
+    const allActiveFashionModels = await storage.getActiveFashionModels();
     
     // Normalize gender mapping to handle various input formats
     const g = (mannequinGender || 'unisex').toLowerCase();
     const genderFilter = ['women', 'female'].includes(g) ? 'women' : 
                         ['men', 'male'].includes(g) ? 'men' : 'unisex';
     
-    // Smart mannequin selection based on garment type and gender
-    const selectedMannequin = selectBestFashionModel(allActiveMannequins, genderFilter, garmentType);
+    // Smart fashion model selection based on garment type and gender
+    const selectedFashionModel = selectBestFashionModel(allActiveFashionModels, genderFilter, garmentType);
     
     let modelImageUrl;
-    if (selectedMannequin) {
-      modelImageUrl = selectedMannequin.imageUrl;
-      console.log(`Using mannequin: ${selectedMannequin.name} (${selectedMannequin.gender}, ${selectedMannequin.category}) for gender: ${mannequinGender}, garment: ${garmentType}`);
+    if (selectedFashionModel) {
+      modelImageUrl = selectedFashionModel.imageUrl;
+      console.log(`Using fashion model: ${selectedFashionModel.name} (${selectedFashionModel.gender}, ${selectedFashionModel.category}) for gender: ${mannequinGender}, garment: ${garmentType}`);
+      
+      // Track usage of the selected model
+      await storage.incrementFashionModelUsage(selectedFashionModel.id);
     } else {
-      // This should not happen if mannequins are properly seeded
-      console.error('No active mannequins found in database - this indicates a configuration issue');
-      throw new Error('No mannequins available for AI try-on processing. Please contact support.');
+      // This should not happen if fashion models are properly seeded
+      console.error('No active fashion models found in database - this indicates a configuration issue');
+      throw new Error('No fashion models available for AI try-on processing. Please contact support.');
     }
 
     // Convert data URL to proper URL using Cloudinary
