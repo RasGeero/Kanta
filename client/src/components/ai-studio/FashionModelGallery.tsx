@@ -35,7 +35,7 @@ export default function FashionModelGallery({
 
   // Debounced search query
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState(searchQuery);
-  
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery);
@@ -112,19 +112,19 @@ export default function FashionModelGallery({
       const matchesSearch = debouncedSearchQuery === "" || 
         model.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
         model.tags.some(tag => tag.toLowerCase().includes(debouncedSearchQuery.toLowerCase()));
-      
+
       // Gender filter (client-side backup for instant UI feedback)
       const matchesGender = genderFilter === 'all' || model.gender === genderFilter;
-      
+
       // Category filter (client-side backup for instant UI feedback)
       const matchesCategory = categoryFilter === 'all' || model.category === categoryFilter;
-      
+
       // Body type filter
       const matchesBodyType = bodyTypeFilter === 'all' || model.bodyType === bodyTypeFilter;
-      
+
       // Ethnicity filter
       const matchesEthnicity = ethnicityFilter === 'all' || model.ethnicity === ethnicityFilter;
-      
+
       return matchesSearch && matchesGender && matchesCategory && matchesBodyType && matchesEthnicity;
     });
 
@@ -174,7 +174,7 @@ export default function FashionModelGallery({
 
   const FeaturedSection = () => {
     const featuredModels = filteredAndSortedModels.filter(model => model.isFeatured).slice(0, 3);
-    
+
     if (featuredModels.length === 0) return null;
 
     return (
@@ -212,7 +212,7 @@ export default function FashionModelGallery({
 
   const ListModelCard = ({ model }: { model: FashionModel }) => {
     const isSelected = selectedModel?.id === model.id;
-    
+
     return (
       <Card 
         className={`cursor-pointer transition-all duration-200 ${
@@ -238,7 +238,7 @@ export default function FashionModelGallery({
                 </Badge>
               )}
             </div>
-            
+
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
@@ -251,7 +251,7 @@ export default function FashionModelGallery({
                     {model.ethnicity} • {model.bodyType} build
                   </div>
                 </div>
-                
+
                 <div className="flex flex-col items-end gap-1 ml-2">
                   {(model.usage || 0) > 10 && (
                     <Badge variant="outline" className="text-xs">
@@ -266,7 +266,7 @@ export default function FashionModelGallery({
                   )}
                 </div>
               </div>
-              
+
               {model.tags.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-2">
                   {model.tags.slice(0, 3).map((tag) => (
@@ -320,7 +320,7 @@ export default function FashionModelGallery({
               className="w-full h-full object-cover"
               loading="lazy"
             />
-            
+
             {/* Overlay badges */}
             <div className="absolute top-1 left-1 right-1 flex justify-between items-start">
               {model.isFeatured && (
@@ -355,7 +355,7 @@ export default function FashionModelGallery({
               <Users className="h-3 w-3" />
               {model.gender} • {model.category}
             </div>
-            
+
             {size !== "small" && model.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1">
                 {model.tags.slice(0, 2).map((tag) => (
@@ -423,7 +423,7 @@ export default function FashionModelGallery({
               <SelectItem value="unisex">Unisex</SelectItem>
             </SelectContent>
           </Select>
-          
+
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
             <SelectTrigger data-testid="category-filter">
               <SelectValue placeholder="Category" />
@@ -457,7 +457,7 @@ export default function FashionModelGallery({
                 </Badge>
               )}
             </Button>
-            
+
             {hasActiveFilters && (
               <Button
                 variant="ghost"
@@ -516,7 +516,7 @@ export default function FashionModelGallery({
                 ))}
               </SelectContent>
             </Select>
-            
+
             <Select value={ethnicityFilter} onValueChange={setEthnicityFilter}>
               <SelectTrigger data-testid="ethnicity-filter">
                 <SelectValue placeholder="Ethnicity" />
@@ -549,14 +549,14 @@ export default function FashionModelGallery({
             <>
               <RecommendedSection />
               <FeaturedSection />
-              
+
               {/* All Models */}
               <div>
                 <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
                   <Filter className="h-4 w-4" />
                   All Models ({filteredAndSortedModels.length})
                 </h3>
-                
+
                 {filteredAndSortedModels.length === 0 ? (
                   <div className="text-center py-8">
                     <Users className="h-12 w-12 text-muted-foreground mx-auto mb-2" />

@@ -72,16 +72,16 @@ async function handleDataUrlToCloudinary(dataUrl: string, publicIdPrefix: string
   if (!dataUrl.startsWith('data:image/')) {
     return dataUrl; // Return as-is if it's already a URL
   }
-  
+
   // Extract base64 data from data URL
   const matches = dataUrl.match(/^data:image\/([a-zA-Z0-9+/]+);base64,(.+)$/);
   if (!matches) {
     throw new Error('Invalid data URL format');
   }
-  
+
   const [, format, base64Data] = matches;
   const buffer = Buffer.from(base64Data, 'base64');
-  
+
   return await uploadToCloudinary(buffer, {
     folder: 'ai-processing/virtual-tryon',
     public_id: `${publicIdPrefix}-${Date.now()}`,
@@ -125,12 +125,12 @@ function requireRole(role: string) {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize seed data if database is empty
   await storage.initializeSeedDataIfEmpty();
-  
+
   // Authentication routes
   app.post("/api/auth/register", async (req, res) => {
     try {
       const userData = insertUserSchema.parse(req.body);
-      
+
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(userData.email);
       if (existingUser) {
@@ -146,16 +146,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Hash password
       const saltRounds = 12;
       const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
-      
+
       const user = await storage.createUser({
         ...userData,
         password: hashedPassword
       });
-      
+
       // Create session
       req.session.userId = user.id;
       req.session.userRole = user.role;
-      
+
       const { password, ...userWithoutPassword } = user;
       res.status(201).json(userWithoutPassword);
     } catch (error) {
@@ -169,7 +169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
-      
+
       if (!email || !password) {
         return res.status(400).json({ message: "Email and password are required" });
       }
@@ -474,7 +474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Increment view count
       await storage.incrementProductViews(req.params.id);
-      
+
       res.json(product);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
@@ -484,10 +484,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/products", requireAuth, upload.single('image'), async (req, res) => {
     try {
       const productData = insertProductSchema.parse(req.body);
-      
+
       let originalImageUrl = productData.originalImage;
       let processedImageUrl = productData.originalImage;
-      
+
       if (req.file) {
         // Process image with sharp for basic optimization
         const processedImage = await sharp(req.file.buffer)
@@ -502,7 +502,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Perform AI processing (background removal + virtual try-on)
         try {
           console.log('Starting AI processing for product creation...');
-          
+
           // Step 1: Remove background
           const formData = new FormData();
           const fileBlob = new Blob([req.file.buffer], { type: req.file.mimetype });
@@ -522,18 +522,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const processedBuffer = await removeBgResponse.arrayBuffer();
             const base64BgRemoved = Buffer.from(processedBuffer).toString('base64');
             const bgRemovedUrl = `data:image/png;base64,${base64BgRemoved}`;
-            
+
             console.log('Background removal successful');
-            
+
             // Step 2: Apply virtual try-on with Fashn.ai if available
             if (process.env.FASHN_AI_API_KEY && process.env.FASHN_AI_API_KEY.trim() !== '') {
               try {
                 const garmentType = productData.category || 'other';
                 const mannequinGender = productData.gender || 'unisex';
-                
+
                 // Call Fashn.ai virtual try-on directly
                 const fashnResult = await processVirtualTryOn(bgRemovedUrl, garmentType, mannequinGender);
-                
+
                 if (fashnResult.success && fashnResult.processedImageUrl !== bgRemovedUrl) {
                   processedImageUrl = fashnResult.processedImageUrl;
                   console.log('Virtual try-on completed successfully');
@@ -579,7 +579,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const updates = req.body;
       const product = await storage.updateProduct(req.params.id, updates);
-      
+
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
@@ -630,14 +630,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedProduct = await storage.updateProductModel(id, modelId, aiPreviewUrl);
-      
+
       if (!updatedProduct) {
         return res.status(404).json({ message: "Product not found" });
       }
 
       // Return the product with seller details
       const productWithSeller = await storage.getProductWithSeller(id);
-      
+
       if (!productWithSeller) {
         return res.status(404).json({ message: "Product not found" });
       }
@@ -655,7 +655,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/products/:id/approve", requireRole('admin'), async (req, res) => {
     try {
       const success = await storage.approveProduct(req.params.id);
-      
+
       if (!success) {
         return res.status(404).json({ message: "Product not found" });
       }
@@ -669,7 +669,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/products/:id", async (req, res) => {
     try {
       const success = await storage.deleteProduct(req.params.id);
-      
+
       if (!success) {
         return res.status(404).json({ message: "Product not found" });
       }
@@ -719,7 +719,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const updates = req.body;
       const order = await storage.updateOrder(req.params.id, updates);
-      
+
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
       }
@@ -761,7 +761,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/payments/initialize", requireAuth, async (req, res) => {
     try {
       const { email, orderId } = req.body;
-      
+
       if (!email || !orderId) {
         return res.status(400).json({ message: "Email and orderId are required" });
       }
@@ -786,7 +786,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Initialize Paystack payment with server-computed amount
       const paymentData = await initializePaystackPayment(amount, email, orderId);
-      
+
       res.json(paymentData);
     } catch (error) {
       console.error('Payment initialization error:', error);
@@ -797,14 +797,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/payments/verify", requireAuth, async (req, res) => {
     try {
       const { reference } = req.body;
-      
+
       if (!reference) {
         return res.status(400).json({ message: "Payment reference is required" });
       }
 
       // Verify Paystack payment
       const paymentData = await verifyPaystackPayment(reference);
-      
+
       if (!paymentData.status || paymentData.data?.status !== 'success') {
         return res.json({ success: false, message: "Payment not successful" });
       }
@@ -883,12 +883,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { user1Id, user2Id } = req.params;
       const productId = req.query.productId as string;
       const requestingUserId = req.session.userId;
-      
+
       // Ensure the requesting user is a participant in the conversation
       if (requestingUserId !== user1Id && requestingUserId !== user2Id) {
         return res.status(403).json({ message: "Access denied. You can only view your own conversations." });
       }
-      
+
       const messages = await storage.getMessagesBetweenUsers(user1Id, user2Id, productId);
       res.json(messages);
     } catch (error) {
@@ -901,12 +901,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { userId, senderId } = req.params;
       const productId = req.query.productId as string;
       const requestingUserId = req.session.userId;
-      
+
       // Ensure the requesting user can only mark their own messages as read
       if (requestingUserId !== userId) {
         return res.status(403).json({ message: "Access denied. You can only mark your own messages as read." });
       }
-      
+
       await storage.markMessagesAsRead(userId, senderId, productId);
       res.json({ message: "Messages marked as read" });
     } catch (error) {
@@ -984,7 +984,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { productId } = req.params;
       const success = await storage.removeFromWishlist(req.session.userId!, productId);
-      
+
       if (!success) {
         return res.status(404).json({ message: "Wishlist item not found" });
       }
@@ -1066,7 +1066,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedItem = await storage.updateCartItem(req.session.userId!, productId, size, { quantity });
-      
+
       if (!updatedItem) {
         return res.status(404).json({ message: "Cart item not found for the specified product and size" });
       }
@@ -1081,13 +1081,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { productId } = req.params;
       const { size } = req.query;
-      
+
       if (!size) {
         return res.status(400).json({ message: "Size is required for cart removal" });
       }
-      
+
       const success = await storage.removeFromCart(req.session.userId!, productId, size as string);
-      
+
       if (!success) {
         return res.status(404).json({ message: "Cart item not found for the specified product and size" });
       }
@@ -1144,7 +1144,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { status } = req.body;
       const success = await storage.updateReportStatus(req.params.id, status);
-      
+
       if (!success) {
         return res.status(404).json({ message: "Report not found" });
       }
@@ -1160,7 +1160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       res.set('Content-Type', 'application/json');
       const { type, image_url } = req.body;
-      
+
       if (!process.env.REMOVE_BG_API_KEY) {
         return res.status(500).json({ 
           success: false,
@@ -1204,7 +1204,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const processedBuffer = await response.arrayBuffer();
-        
+
         // Upload processed image to Cloudinary
         const buffer = Buffer.from(processedBuffer);
         processedImageUrl = await uploadToCloudinary(buffer, {
@@ -1212,7 +1212,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           public_id: `bg-removed-${Date.now()}`,
           format: 'png'
         });
-        
+
       } else if (type === 'url' && image_url) {
         // Process image from URL
         const formData = new FormData();
@@ -1238,7 +1238,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         const processedBuffer = await response.arrayBuffer();
-        
+
         // Upload processed image to Cloudinary
         const buffer = Buffer.from(processedBuffer);
         processedImageUrl = await uploadToCloudinary(buffer, {
@@ -1268,19 +1268,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Mannequin overlay endpoint (placeholder for Fashn.ai)
-  app.post("/api/ai/mannequin-overlay", async (req, res) => {
+  // Model overlay endpoint (placeholder for Fashn.ai)
+  app.post("/api/ai/model-overlay", async (req, res) => {
     try {
       res.set('Content-Type', 'application/json');
-      const { imageUrl, garmentType, mannequinGender, fashionModel } = req.body;
-      
+      const { imageUrl, garmentType, modelGender, fashionModel } = req.body;
+
       if (!imageUrl) {
         return res.status(400).json({
           success: false,
           message: "Image URL is required"
         });
       }
-      
+
       // Check if Fashn.ai API key is available
       if (!process.env.FASHN_AI_API_KEY || process.env.FASHN_AI_API_KEY.trim() === '') {
         // Return success with placeholder message for graceful fallback
@@ -1292,63 +1292,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Implement actual Fashn.ai API call
-      console.log('Mannequin overlay requested:', { imageUrl, garmentType, mannequinGender });
+      console.log('Model overlay requested:', { imageUrl, garmentType, modelGender });
       const processingStartTime = Date.now();
-      
+
       try {
         // Get appropriate fashion model from database using smart selection
         const allActiveFashionModels = await storage.getActiveFashionModels();
-        
+
         // Normalize gender mapping to handle various input formats
-        const g = (mannequinGender || 'unisex').toLowerCase();
+        const g = (modelGender || 'unisex').toLowerCase();
         const genderFilter = ['women', 'female'].includes(g) ? 'women' : 
                             ['men', 'male'].includes(g) ? 'men' : 'unisex';
-        
+
         let modelImageUrl;
         let selectedModel = null;
-        
+
         if (fashionModel && fashionModel.id) {
           // Use the provided fashion model from the client
           selectedModel = fashionModel; // IMPORTANT: Set selectedModel for success/error tracking
           modelImageUrl = fashionModel.imageUrl;
           console.log(`Using client-selected fashion model: ${fashionModel.name} (${fashionModel.gender})`);
-          
+
           // Track analytics event (usage will be incremented in updateFashionModelMetrics)
           await storage.trackFashionModelEvent({
             modelId: fashionModel.id,
             eventType: 'ai_process',
             context: {
               garmentType,
-              gender: mannequinGender,
+              gender: modelGender,
               source: 'ai_studio'
             }
           });
         } else if (allActiveFashionModels.length > 0) {
           // Fall back to smart selection if no fashion model provided
           selectedModel = selectBestFashionModel(allActiveFashionModels, genderFilter, garmentType);
-          
+
           if (selectedModel) {
             modelImageUrl = selectedModel.imageUrl;
-            console.log(`Using smart-selected fashion model: ${selectedModel.name} (${selectedModel.gender}) for gender: ${mannequinGender}`);
-            
+            console.log(`Using smart-selected fashion model: ${selectedModel.name} (${selectedModel.gender}) for gender: ${modelGender}`);
+
             // Track analytics event (usage will be incremented in updateFashionModelMetrics)
             await storage.trackFashionModelEvent({
               modelId: selectedModel.id,
               eventType: 'ai_process',
               context: {
                 garmentType,
-                gender: mannequinGender,
+                gender: modelGender,
                 source: 'ai_studio'
               }
             });
           }
         }
-        
+
         if (!selectedModel) {
           // Final fallback to Unsplash if no fashion models in database
           console.warn('No active fashion models found in database, using Unsplash fallback');
           const fallbackMaleUrl = "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=400&h=600&fit=crop&crop=face";
-          modelImageUrl = mannequinGender === 'female' 
+          modelImageUrl = modelGender === 'female' 
             ? "https://images.unsplash.com/photo-1551836022-8b2858c9c69b?w=400&h=600&fit=crop&crop=face" 
             : fallbackMaleUrl;
         }
@@ -1429,12 +1429,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Success - return the virtual try-on result
         const processingEndTime = Date.now();
         const processingTime = processingEndTime - processingStartTime;
-        
+
         // Track success metrics
         if (selectedModel) {
           await storage.updateFashionModelMetrics(selectedModel.id, true, processingTime);
         }
-        
+
         return res.json({
           success: true,
           processedImageUrl: finalResult.output[0],
@@ -1443,14 +1443,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       } catch (error) {
         console.error('Fashn.ai processing error:', error);
-        
+
         // Track failure metrics
         if (selectedModel) {
           const processingEndTime = Date.now();
           const processingTime = processingEndTime - processingStartTime;
           await storage.updateFashionModelMetrics(selectedModel.id, false, processingTime);
         }
-        
+
         // Fallback to background-removed image
         return res.json({
           success: true,
@@ -1460,26 +1460,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
     } catch (error) {
-      console.error('Mannequin overlay error:', error);
+      console.error('Model overlay error:', error);
       res.status(500).json({ 
         success: false,
-        message: error instanceof Error ? error.message : 'Mannequin overlay processing failed'
+        message: error instanceof Error ? error.message : 'Model overlay processing failed'
       });
     }
   });
 
   // Fashion Model Management Routes
-  
+
   // Get all fashion models with optional filtering
   app.get("/api/fashion-models", async (req, res) => {
     try {
       const { gender, bodyType, ethnicity, category, skinTone, tags, active, featured } = req.query;
-      
+
       let fashionModels;
-      
+
       // Check if we have search filters
       const hasFilters = gender || bodyType || ethnicity || category || skinTone || tags;
-      
+
       if (hasFilters) {
         // Use search with filters
         const searchQuery: any = {};
@@ -1496,16 +1496,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             searchQuery.tags = (tags as string).split(',').map(tag => tag.trim()).filter(Boolean);
           }
         }
-        
+
         fashionModels = await storage.searchFashionModels(searchQuery);
-        
+
         // Apply active filter to search results if specified
         if (active === 'true') {
           fashionModels = fashionModels.filter(m => m.isActive);
         } else if (active === 'false') {
           fashionModels = fashionModels.filter(m => !m.isActive);
         }
-        
+
         // Apply featured filter if specified
         if (featured === 'true') {
           fashionModels = fashionModels.filter(m => m.isFeatured);
@@ -1524,7 +1524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fashionModels = await storage.getAllFashionModels();
         }
       }
-      
+
       res.json({ success: true, data: fashionModels });
     } catch (error) {
       console.error('Get fashion models error:', error);
@@ -1539,7 +1539,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/fashion-models/recommended", async (req, res) => {
     try {
       const { garmentType, gender, limit } = req.query;
-      
+
       // Validate required parameters
       if (!garmentType || !gender) {
         return res.status(400).json({ 
@@ -1547,22 +1547,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: 'garmentType and gender are required parameters' 
         });
       }
-      
+
       const limitNum = limit ? parseInt(limit as string, 10) : 3;
-      
+
       if (isNaN(limitNum) || limitNum < 1 || limitNum > 10) {
         return res.status(400).json({ 
           success: false, 
           message: 'limit must be a number between 1 and 10' 
         });
       }
-      
+
       const recommendedModels = await storage.getRecommendedFashionModels(
         garmentType as string, 
         gender as string, 
         limitNum
       );
-      
+
       res.json({ success: true, data: recommendedModels });
     } catch (error) {
       console.error('Get recommended fashion models error:', error);
@@ -1577,7 +1577,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/fashion-models/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      
+
       // Validate ID parameter
       if (!id || id.trim() === '') {
         return res.status(400).json({ 
@@ -1585,13 +1585,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: 'Valid fashion model ID is required' 
         });
       }
-      
+
       const fashionModel = await storage.getFashionModel(id);
-      
+
       if (!fashionModel) {
         return res.status(404).json({ success: false, message: 'Fashion model not found' });
       }
-      
+
       res.json({ success: true, data: fashionModel });
     } catch (error) {
       console.error('Get fashion model error:', error);
@@ -1647,7 +1647,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Upload image to Cloudinary
         const buffer = req.file.buffer;
         const publicId = `fashion-model-${Date.now()}`;
-        
+
         imageUrl = await uploadToCloudinary(buffer, {
           folder: 'fashion-models',
           public_id: publicId,
@@ -1680,7 +1680,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       const fashionModel = await storage.createFashionModel(fashionModelData);
-      
+
       res.status(201).json({ success: true, data: fashionModel });
     } catch (error) {
       console.error('Create fashion model error:', error);
@@ -1695,7 +1695,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/fashion-models/:id", requireRole('admin'), upload.single('image'), async (req, res) => {
     try {
       const { id } = req.params;
-      
+
       // Parse and validate the request body
       let validatedData;
       try {
@@ -1734,7 +1734,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (req.file) {
         const buffer = req.file.buffer;
         const publicId = `fashion-model-${id}-${Date.now()}`;
-        
+
         (validatedData as any).imageUrl = await uploadToCloudinary(buffer, {
           folder: 'fashion-models',
           public_id: publicId,
@@ -1756,11 +1756,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const fashionModel = await storage.updateFashionModel(id, validatedData);
-      
+
       if (!fashionModel) {
         return res.status(404).json({ success: false, message: 'Fashion model not found' });
       }
-      
+
       res.json({ success: true, data: fashionModel });
     } catch (error) {
       console.error('Update fashion model error:', error);
@@ -1775,7 +1775,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/fashion-models/:id", requireRole('admin'), async (req, res) => {
     try {
       const { id } = req.params;
-      
+
       // Validate ID parameter
       if (!id || id.trim() === '') {
         return res.status(400).json({ 
@@ -1783,13 +1783,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: 'Valid fashion model ID is required' 
         });
       }
-      
+
       const success = await storage.deleteFashionModel(id);
-      
+
       if (!success) {
         return res.status(404).json({ success: false, message: 'Fashion model not found' });
       }
-      
+
       res.json({ success: true, message: 'Fashion model deleted successfully' });
     } catch (error) {
       console.error('Delete fashion model error:', error);
@@ -1804,7 +1804,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/fashion-models/:id/toggle", requireRole('admin'), async (req, res) => {
     try {
       const { id } = req.params;
-      
+
       // Validate ID parameter
       if (!id || id.trim() === '') {
         return res.status(400).json({ 
@@ -1812,12 +1812,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: 'Valid fashion model ID is required' 
         });
       }
-      
+
       // Validate and parse request body
       const toggleSchema = z.object({
         isActive: z.boolean()
       });
-      
+
       let validatedData;
       try {
         validatedData = toggleSchema.parse(req.body);
@@ -1831,13 +1831,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         throw validationError;
       }
-      
+
       const success = await storage.toggleFashionModelStatus(id, validatedData.isActive);
-      
+
       if (!success) {
         return res.status(404).json({ success: false, message: 'Fashion model not found' });
       }
-      
+
       res.json({ 
         success: true, 
         message: `Fashion model ${validatedData.isActive ? 'activated' : 'deactivated'} successfully` 
@@ -1857,7 +1857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const removeBgApiKey = process.env.REMOVE_BG_API_KEY;
       const fashnApiKey = process.env.FASHN_AI_API_KEY;
-      
+
       res.json({
         status: "ok",
         removeBgConfigured: !!removeBgApiKey,
@@ -1880,15 +1880,15 @@ async function processAIImage(imageUrl: string): Promise<string> {
     // Simulate Remove.bg API call
     const removeBgApiKey = process.env.REMOVE_BG_API_KEY || "placeholder_remove_bg_key";
     console.log(`Processing image with Remove.bg: ${imageUrl}`);
-    
-    // Simulate Fashn.ai API call for mannequin overlay
+
+    // Simulate Fashn.ai API call for model overlay
     const fashnApiKey = process.env.FASHN_AI_API_KEY || "placeholder_fashn_key";
-    console.log(`Processing mannequin overlay with Fashn.ai: ${imageUrl}`);
-    
+    console.log(`Processing model overlay with Fashn.ai: ${imageUrl}`);
+
     // In production, make actual API calls:
     // const removeResponse = await fetch('https://api.remove.bg/v1.0/removebg', { ... });
     // const fashnResponse = await fetch('https://api.fashn.ai/v1/try-on', { ... });
-    
+
     return imageUrl; // Return processed image URL
   } catch (error) {
     console.error('AI processing error:', error);
@@ -1909,7 +1909,7 @@ function selectBestFashionModel(
   // Enhanced scoring with analytics-driven metrics
   const scoredModels = allFashionModels.map(model => {
     let score = 0;
-    
+
     // Gender matching (highest priority - 100 points)
     if (model.gender === preferredGender) {
       score += 100;
@@ -1918,7 +1918,7 @@ function selectBestFashionModel(
     } else {
       score += 20; // Wrong gender gets low score
     }
-    
+
     // Category matching (high priority - up to 60 points)
     const garmentCategory = mapGarmentToCategory(garmentType);
     if (model.category === garmentCategory) {
@@ -1930,56 +1930,56 @@ function selectBestFashionModel(
       const categoryBonus = getCategoryCompatibilityScore(model.category, garmentCategory);
       score += categoryBonus;
     }
-    
+
     // Success rate bonus (high priority - up to 30 points)
     const successRate = Number(model.successRate || 0);
     if (successRate > 0) {
       score += (successRate / 100) * 30; // Scale 0-100% to 0-30 points
     }
-    
+
     // Recent usage trend (medium priority - up to 25 points)
     const recentUsage = model.recentUsage || 0;
     const totalUsage = model.usage || 0;
-    
+
     // Reward models with recent activity but not completely overused
     if (recentUsage > 0) {
       const recentUsageScore = Math.min(15, recentUsage * 2); // Cap at 15 points
       const diversityBonus = totalUsage > 50 ? -5 : 0; // Slight penalty for overused models
       score += recentUsageScore + diversityBonus;
     }
-    
+
     // Featured status bonus (medium priority - 20 points)
     if (model.isFeatured) {
       score += 20;
     }
-    
+
     // Total interactions bonus (lower priority - up to 15 points)
     const interactions = model.totalInteractions || 0;
     const interactionScore = Math.min(15, interactions * 0.1);
     score += interactionScore;
-    
+
     // Sort order bonus (administrative priority - up to 15 points)
     score += Math.max(0, 15 - (model.sortOrder || 0));
-    
+
     // Legacy usage bonus (minimal weight - up to 10 points)
     const legacyUsageBonus = Math.min(10, totalUsage * 0.05);
     score += legacyUsageBonus;
-    
+
     // Small random factor for variety (reduced - 0-3 points)
     score += Math.random() * 3;
-    
+
     return { model, score };
   });
-  
+
   // Sort by score (highest first) and return the best match
   scoredModels.sort((a, b) => b.score - a.score);
-  
+
   console.log(`Enhanced fashion model selection scores for ${preferredGender} ${garmentType}:`);
   scoredModels.slice(0, 3).forEach((item, index) => {
     const model = item.model;
     console.log(`  ${index + 1}. ${model.name} (${model.gender}, ${model.category}): ${item.score.toFixed(1)} [Success: ${model.successRate || 0}%, Recent: ${model.recentUsage || 0}, Total: ${model.usage || 0}]`);
   });
-  
+
   return scoredModels[0]?.model || null;
 }
 
@@ -1992,14 +1992,14 @@ function getCategoryCompatibilityScore(modelCategory: string, garmentCategory: s
     'athletic': { 'casual': 10, 'general': 8 },
     'general': { 'formal': 10, 'evening': 10, 'casual': 10, 'athletic': 8 }
   };
-  
+
   return compatibility[modelCategory]?.[garmentCategory] || 5; // Default small bonus
 }
 
 // Helper function to map garment types to categories
 function mapGarmentToCategory(garmentType: string): string {
   const garment = (garmentType || '').toLowerCase();
-  
+
   // Map common garment types to mannequin categories
   if (garment.includes('suit') || garment.includes('blazer') || garment.includes('formal')) {
     return 'formal';
@@ -2010,7 +2010,7 @@ function mapGarmentToCategory(garmentType: string): string {
   } else if (garment.includes('casual') || garment.includes('t-shirt') || garment.includes('jeans')) {
     return 'casual';
   }
-  
+
   return 'general'; // Default fallback
 }
 
@@ -2018,25 +2018,25 @@ function mapGarmentToCategory(garmentType: string): string {
 async function processVirtualTryOn(
   imageUrl: string, 
   garmentType: string, 
-  mannequinGender: string
+  modelGender: string
 ): Promise<{ success: boolean; processedImageUrl: string; message: string }> {
   try {
     // Get appropriate fashion models from database with smart selection
     const allActiveFashionModels = await storage.getActiveFashionModels();
-    
+
     // Normalize gender mapping to handle various input formats
-    const g = (mannequinGender || 'unisex').toLowerCase();
+    const g = (modelGender || 'unisex').toLowerCase();
     const genderFilter = ['women', 'female'].includes(g) ? 'women' : 
                         ['men', 'male'].includes(g) ? 'men' : 'unisex';
-    
+
     // Smart fashion model selection based on garment type and gender
     const selectedFashionModel = selectBestFashionModel(allActiveFashionModels, genderFilter, garmentType);
-    
+
     let modelImageUrl;
     if (selectedFashionModel) {
       modelImageUrl = selectedFashionModel.imageUrl;
-      console.log(`Using fashion model: ${selectedFashionModel.name} (${selectedFashionModel.gender}, ${selectedFashionModel.category}) for gender: ${mannequinGender}, garment: ${garmentType}`);
-      
+      console.log(`Using fashion model: ${selectedFashionModel.name} (${selectedFashionModel.gender}, ${selectedFashionModel.category}) for gender: ${modelGender}, garment: ${garmentType}`);
+
       // Track usage of the selected model
       await storage.incrementFashionModelUsage(selectedFashionModel.id);
     } else {
@@ -2066,7 +2066,7 @@ async function processVirtualTryOn(
     });
 
     if (!runResponse.ok) {
-      const errorText = await runResponse.text();
+      const errorText = await response.text();
       console.error('Fashn.ai run API error:', errorText);
       throw new Error(`Fashn.ai API request failed: ${runResponse.status}`);
     }
@@ -2142,10 +2142,10 @@ async function processVirtualTryOn(
 // Paystack Integration Functions
 async function initializePaystackPayment(amount: number, email: string, orderId: string) {
   const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
-  
+
   console.log('Paystack Secret Key available:', !!paystackSecretKey);
   console.log('Paystack Secret Key length:', paystackSecretKey ? paystackSecretKey.length : 0);
-  
+
   if (!paystackSecretKey || paystackSecretKey.trim() === '') {
     console.error('Paystack secret key issue - Key exists:', !!paystackSecretKey, 'Length:', paystackSecretKey ? paystackSecretKey.length : 0);
     throw new Error('Paystack secret key not configured');
@@ -2178,7 +2178,7 @@ async function initializePaystackPayment(amount: number, email: string, orderId:
     });
 
     const data = await response.json();
-    
+
     if (!response.ok) {
       console.error('Paystack API error:', data);
       throw new Error(data.message || 'Payment initialization failed');
@@ -2193,7 +2193,7 @@ async function initializePaystackPayment(amount: number, email: string, orderId:
 
 async function verifyPaystackPayment(reference: string) {
   const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
-  
+
   if (!paystackSecretKey) {
     throw new Error('Paystack secret key not configured');
   }
@@ -2207,7 +2207,7 @@ async function verifyPaystackPayment(reference: string) {
     });
 
     const data = await response.json();
-    
+
     if (!response.ok) {
       console.error('Paystack verification API error:', data);
       throw new Error(data.message || 'Payment verification failed');

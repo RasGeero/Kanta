@@ -36,7 +36,7 @@ async function uploadToCloudinary(buffer: Buffer, options: {
   });
 }
 
-// Mannequin data with corresponding image files
+// Fashion model data with corresponding image files
 const mannequinsData: Array<Omit<InsertMannequin, 'imageUrl' | 'cloudinaryPublicId'> & { imageFile: string }> = [
   {
     name: 'Elena - Professional Female Model',
@@ -192,8 +192,8 @@ const mannequinsData: Array<Omit<InsertMannequin, 'imageUrl' | 'cloudinaryPublic
 
 async function seedMannequins() {
   try {
-    console.log('🌱 Starting mannequin seeding process...');
-    console.log(`📊 Planning to create ${mannequinsData.length} mannequins`);
+    console.log('🌱 Starting fashion model seeding process...');
+    console.log(`📊 Planning to create ${mannequinsData.length} fashion models`);
     
     let successCount = 0;
     let failureCount = 0;
@@ -222,11 +222,11 @@ async function seedMannequins() {
         };
         
         const createdMannequin = await storage.createMannequin(mannequin);
-        console.log(`✅ Created mannequin: ${mannequinData.name} - ${imageUrl}`);
+        console.log(`✅ Created fashion model: ${mannequinData.name} - ${imageUrl}`);
         successCount++;
         
       } catch (error) {
-        console.error(`❌ Failed to create mannequin ${mannequinData.name}:`, error);
+        console.error(`❌ Failed to create fashion model ${mannequinData.name}:`, error);
         failureCount++;
       }
       
@@ -235,15 +235,15 @@ async function seedMannequins() {
     }
     
     console.log('\n📈 Seeding Summary:');
-    console.log(`✅ Successfully created: ${successCount} mannequins`);
-    console.log(`❌ Failed: ${failureCount} mannequins`);
-    console.log(`🎯 Total processed: ${successCount + failureCount} mannequins`);
+    console.log(`✅ Successfully created: ${successCount} fashion models`);
+    console.log(`❌ Failed: ${failureCount} fashion models`);
+    console.log(`🎯 Total processed: ${successCount + failureCount} fashion models`);
     
     if (failureCount > 0) {
-      console.log('\n⚠️ Some mannequins failed to create. Check the errors above.');
+      console.log('\n⚠️ Some fashion models failed to create. Check the errors above.');
       return false;
     } else {
-      console.log('\n🎉 All mannequins seeded successfully!');
+      console.log('\n🎉 All fashion models seeded successfully!');
       return true;
     }
     

@@ -147,15 +147,15 @@ export default function AdminDashboard() {
       fashionModelApi.toggleFashionModelStatus(id, isActive),
     onSuccess: () => {
       toast({
-        title: "Mannequin updated",
-        description: "Mannequin status has been updated.",
+        title: "Model updated",
+        description: "Model status has been updated.",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/fashion-models'] });
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "Failed to update mannequin status.",
+        description: "Failed to update model status.",
         variant: "destructive",
       });
     },
@@ -166,15 +166,15 @@ export default function AdminDashboard() {
     mutationFn: (id: string) => fashionModelApi.deleteFashionModel(id),
     onSuccess: () => {
       toast({
-        title: "Mannequin deleted",
-        description: "Mannequin has been deleted successfully.",
+        title: "Model deleted",
+        description: "Model has been deleted successfully.",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/fashion-models'] });
     },
     onError: () => {
       toast({
         title: "Error",
-        description: "Failed to delete mannequin.",
+        description: "Failed to delete model.",
         variant: "destructive",
       });
     },
@@ -185,8 +185,8 @@ export default function AdminDashboard() {
     mutationFn: (data: FormData) => fashionModelApi.createFashionModel(data),
     onSuccess: () => {
       toast({
-        title: "Mannequin created",
-        description: "Mannequin has been created successfully.",
+        title: "Model created",
+        description: "Model has been created successfully.",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/fashion-models'] });
       setIsMannequinModalOpen(false);
@@ -197,7 +197,7 @@ export default function AdminDashboard() {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to create mannequin.",
+        description: error.message || "Failed to create model.",
         variant: "destructive",
       });
     },
@@ -209,8 +209,8 @@ export default function AdminDashboard() {
       fashionModelApi.updateFashionModel(id, data),
     onSuccess: () => {
       toast({
-        title: "Mannequin updated",
-        description: "Mannequin has been updated successfully.",
+        title: "Model updated",
+        description: "Model has been updated successfully.",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/fashion-models'] });
       setIsMannequinModalOpen(false);
@@ -222,7 +222,7 @@ export default function AdminDashboard() {
     onError: (error: any) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to update mannequin.",
+        description: error.message || "Failed to update model.",
         variant: "destructive",
       });
     },
@@ -434,7 +434,7 @@ export default function AdminDashboard() {
           <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
           <TabsTrigger value="orders" data-testid="tab-orders">Orders</TabsTrigger>
           <TabsTrigger value="reports" data-testid="tab-reports">Reports</TabsTrigger>
-          <TabsTrigger value="mannequins" data-testid="tab-mannequins">Mannequins</TabsTrigger>
+          <TabsTrigger value="mannequins" data-testid="tab-mannequins">Models</TabsTrigger>
         </TabsList>
 
         <TabsContent value="products">
@@ -690,13 +690,13 @@ export default function AdminDashboard() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle>Mannequin Management</CardTitle>
+                <CardTitle>Model Management</CardTitle>
                 <Button 
                   onClick={handleCreateMannequin}
                   data-testid="create-mannequin"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Mannequin
+                  Add Model
                 </Button>
               </div>
             </CardHeader>
@@ -716,7 +716,7 @@ export default function AdminDashboard() {
               ) : mannequins.length === 0 ? (
                 <div className="text-center py-8">
                   <User className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No mannequins available</p>
+                  <p className="text-muted-foreground">No models available</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -842,14 +842,14 @@ export default function AdminDashboard() {
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {selectedMannequin ? 'Edit Mannequin' : 'Create New Mannequin'}
+              {selectedMannequin ? 'Edit Model' : 'Create New Model'}
             </DialogTitle>
           </DialogHeader>
           <Form {...mannequinForm}>
             <form onSubmit={mannequinForm.handleSubmit(onSubmitMannequin)} className="space-y-4">
               {/* Image Upload */}
               <div className="space-y-2">
-                <label className="text-sm font-medium">Mannequin Image</label>
+                <label className="text-sm font-medium">Model Image</label>
                 <div className="flex flex-col space-y-2">
                   <Input
                     type="file"
@@ -1154,7 +1154,7 @@ export default function AdminDashboard() {
                 >
                   {createMannequinMutation.isPending || updateMannequinMutation.isPending
                     ? 'Saving...'
-                    : selectedMannequin ? 'Update Mannequin' : 'Create Mannequin'
+                    : selectedMannequin ? 'Update Model' : 'Create Model'
                   }
                 </Button>
               </div>
