@@ -15,12 +15,12 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { productApi, userApi, orderApi, reportApi, mannequinApi } from "@/services/api";
 import { useToast } from "@/hooks/use-toast";
-import { insertMannequinSchema } from "@shared/schema";
+import { insertFashionModelSchema } from "@shared/schema";
 import { z } from "zod";
 import type { ProductWithSeller, Mannequin } from "@shared/schema";
 
 // Form schema for mannequin creation/editing
-const mannequinFormSchema = insertMannequinSchema.extend({
+const mannequinFormSchema = insertFashionModelSchema.extend({
   tagsString: z.string().optional(),
   height: z.coerce.number().int().positive().optional(),
   sortOrder: z.coerce.number().int().optional()

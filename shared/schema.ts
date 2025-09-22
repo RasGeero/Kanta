@@ -170,6 +170,9 @@ export const fashionModels = pgTable("fashion_models", {
   updatedAt: timestamp("updated_at").default(sql`now()`),
 });
 
+// Gender type for consistency across frontend and backend  
+export type GenderType = 'men' | 'women' | 'unisex';
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({ id: true, createdAt: true });
 export const insertProductSchema = createInsertSchema(products).omit({ 

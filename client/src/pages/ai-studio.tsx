@@ -22,6 +22,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { aiProcessing } from "@/services/ai-processing";
+import FashionModelSelector from "@/components/ai-studio/FashionModelSelector";
+import { FashionModel } from "@/types/models";
 
 interface AIStudioResult {
   generatedImage: string;
@@ -37,8 +39,7 @@ export default function AIStudio() {
   // State for the three panels
   const [garmentImage, setGarmentImage] = useState<File | null>(null);
   const [garmentImagePreview, setGarmentImagePreview] = useState<string | null>(null);
-  const [modelImage, setModelImage] = useState<File | null>(null);
-  const [modelImagePreview, setModelImagePreview] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<FashionModel | null>(null);
   const [category, setCategory] = useState<string>("");
   const [isLongTop, setIsLongTop] = useState(false);
   const [autoDetectGarmentType, setAutoDetectGarmentType] = useState(true);
@@ -57,14 +58,6 @@ export default function AIStudio() {
     reader.readAsDataURL(file);
   };
 
-  const handleModelUpload = (file: File) => {
-    setModelImage(file);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setModelImagePreview(e.target?.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
 
   const handleGenerateAI = async () => {
     if (!garmentImage) {
@@ -87,11 +80,14 @@ export default function AIStudio() {
 
     setIsGenerating(true);
     try {
+      // Determine gender preference based on selected model or category
+      const genderPreference = selectedModel?.gender || 'unisex';
+      
       // Use real AI processing service
       const result = await aiProcessing.processProductImage(
         garmentImage,
         category,
-        'unisex' // Default to unisex mannequin
+        genderPreference
       );
       
       if (result.success && result.processedImageUrl) {
@@ -325,106 +321,13 @@ export default function AIStudio() {
           </CardContent>
         </Card>
 
-        {/* Panel 2: Select Model (Optional) */}
-        <Card className="h-fit opacity-60">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <User className="h-5 w-5" />
-              <span>Model (Optional)</span>
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">AI will use professional mannequins based on your garment category</p>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Upload Model Image */}
-            <div>
-              <Label>Upload Model Image</Label>
-              <div className="mt-2 border-2 border-dashed border-border rounded-lg p-6 text-center">
-                {modelImagePreview ? (
-                  <div className="space-y-4">
-                    <img 
-                      src={modelImagePreview} 
-                      alt="Model preview" 
-                      className="w-32 h-48 object-cover rounded-lg mx-auto"
-                    />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setModelImage(null);
-                        setModelImagePreview(null);
-                      }}
-                    >
-                      Remove Image
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <User className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <div className="space-y-2">
-                      <p className="text-sm text-muted-foreground">
-                        Upload a clear photo of the model
-                      </p>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleModelUpload(file);
-                        }}
-                        className="hidden"
-                        id="model-upload"
-                        data-testid="model-upload"
-                      />
-                      <label htmlFor="model-upload">
-                        <Button type="button" variant="outline" asChild>
-                          <span>Choose Image</span>
-                        </Button>
-                      </label>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Model Controls */}
-            <div className="space-y-4">
-              <Button 
-                variant="secondary" 
-                className="w-full"
-                disabled={!modelImage}
-                data-testid="generate-ai-model"
-              >
-                <Wand2 className="h-4 w-4 mr-2" />
-                Generate AI Model
-              </Button>
-              
-              <p className="text-xs text-muted-foreground text-center">
-                AI will process and normalize the model image for better try-on results
-              </p>
-            </div>
-
-            {/* Generate Button */}
-            <Button
-              onClick={handleGenerateAI}
-              disabled={!garmentImage || !category || isGenerating}
-              className="w-full"
-              size="lg"
-              data-testid="generate-try-on"
-            >
-              {isGenerating ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-4 w-4 mr-2" />
-                  Generate Try-On
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
+        {/* Panel 2: Select Fashion Model */}
+        <FashionModelSelector
+          selectedModel={selectedModel}
+          onModelSelect={setSelectedModel}
+          garmentCategory={category}
+          preferredGender={category === 'Top' ? 'unisex' : 'unisex'} // Could enhance based on garment category
+        />
 
         {/* Panel 3: Result */}
         <Card className="h-fit">
@@ -436,11 +339,32 @@ export default function AIStudio() {
           </CardHeader>
           <CardContent className="space-y-6">
             {!aiResult && !isGenerating && (
-              <div className="text-center py-12">
+              <div className="text-center py-8">
                 <Sparkles className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">
+                <p className="text-muted-foreground mb-4">
                   Your AI-generated try-on result will appear here
                 </p>
+                
+                {/* Generate Button */}
+                <Button
+                  onClick={handleGenerateAI}
+                  disabled={!garmentImage || !category || isGenerating}
+                  className="w-full"
+                  size="lg"
+                  data-testid="generate-try-on"
+                >
+                  {isGenerating ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Generate Try-On
+                    </>
+                  )}
+                </Button>
               </div>
             )}
 
