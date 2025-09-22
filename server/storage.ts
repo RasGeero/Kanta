@@ -19,6 +19,8 @@ import {
   type InsertCartItem,
   type FashionModel,
   type InsertFashionModel,
+  type FashionModelAnalytics,
+  type InsertFashionModelAnalytics,
   users,
   products,
   orders,
@@ -27,7 +29,8 @@ import {
   wishlist,
   reports,
   cartItems,
-  fashionModels
+  fashionModels,
+  fashionModelAnalytics
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ilike, gte, lte, desc, asc, count, avg, sql } from "drizzle-orm";
@@ -128,6 +131,13 @@ export interface IStorage {
   deleteFashionModel(id: string): Promise<boolean>;
   toggleFashionModelStatus(id: string, isActive: boolean): Promise<boolean>;
   incrementFashionModelUsage(id: string): Promise<void>;
+  
+  // Enhanced analytics operations
+  trackFashionModelEvent(event: InsertFashionModelAnalytics): Promise<FashionModelAnalytics>;
+  updateFashionModelMetrics(id: string, success: boolean, processingTime?: number): Promise<void>;
+  getFashionModelAnalytics(modelId: string, days?: number): Promise<FashionModelAnalytics[]>;
+  getTopPerformingModels(limit?: number, days?: number): Promise<FashionModel[]>;
+  refreshRecentUsageStats(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1131,8 +1141,143 @@ export class DatabaseStorage implements IStorage {
   async incrementFashionModelUsage(id: string): Promise<void> {
     await db
       .update(fashionModels)
-      .set({ usage: sql`${fashionModels.usage} + 1`, updatedAt: new Date() })
+      .set({ 
+        usage: sql`${fashionModels.usage} + 1`, 
+        recentUsage: sql`${fashionModels.recentUsage} + 1`,
+        totalInteractions: sql`${fashionModels.totalInteractions} + 1`,
+        updatedAt: new Date() 
+      })
       .where(eq(fashionModels.id, id));
+  }
+
+  // Enhanced analytics operations
+  async trackFashionModelEvent(event: InsertFashionModelAnalytics): Promise<FashionModelAnalytics> {
+    const [created] = await db
+      .insert(fashionModelAnalytics)
+      .values(event)
+      .returning();
+    
+    // Update interaction count when tracking view/select events
+    if (event.eventType === 'view' || event.eventType === 'select') {
+      await db
+        .update(fashionModels)
+        .set({ 
+          totalInteractions: sql`${fashionModels.totalInteractions} + 1`,
+          updatedAt: new Date() 
+        })
+        .where(eq(fashionModels.id, event.modelId));
+    }
+    
+    return created;
+  }
+
+  async updateFashionModelMetrics(id: string, success: boolean, processingTime?: number): Promise<void> {
+    // Get current metrics to calculate new success rate BEFORE incrementing usage
+    const currentModel = await this.getFashionModel(id);
+    if (!currentModel) return;
+
+    const currentSuccessRate = Number(currentModel.successRate || 0);
+    const currentUsage = currentModel.usage || 0;
+    
+    // Calculate new success rate using incremental average (BEFORE incrementing usage)
+    const newSuccessRate = currentUsage === 0 
+      ? (success ? 100 : 0)
+      : ((currentSuccessRate * currentUsage) + (success ? 100 : 0)) / (currentUsage + 1);
+
+    // Update all metrics atomically, including usage increment
+    await db
+      .update(fashionModels)
+      .set({ 
+        usage: sql`${fashionModels.usage} + 1`,
+        recentUsage: sql`${fashionModels.recentUsage} + 1`,
+        totalInteractions: sql`${fashionModels.totalInteractions} + 1`,
+        successRate: newSuccessRate.toFixed(2),
+        updatedAt: new Date() 
+      })
+      .where(eq(fashionModels.id, id));
+      
+    // Track the success/error event
+    await this.trackFashionModelEvent({
+      modelId: id,
+      eventType: success ? 'success' : 'error',
+      context: {
+        processingTime,
+        source: 'ai_studio'
+      }
+    });
+  }
+
+  async getFashionModelAnalytics(modelId: string, days: number = 30): Promise<FashionModelAnalytics[]> {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - days);
+
+    return await db
+      .select()
+      .from(fashionModelAnalytics)
+      .where(
+        and(
+          eq(fashionModelAnalytics.modelId, modelId),
+          gte(fashionModelAnalytics.createdAt, cutoffDate)
+        )
+      )
+      .orderBy(desc(fashionModelAnalytics.createdAt));
+  }
+
+  async getTopPerformingModels(limit: number = 10, days: number = 30): Promise<FashionModel[]> {
+    // Get models sorted by a composite score of recent usage, success rate, and total interactions
+    return await db
+      .select()
+      .from(fashionModels)
+      .where(eq(fashionModels.isActive, true))
+      .orderBy(
+        desc(sql`(${fashionModels.recentUsage} * 0.4 + ${fashionModels.successRate} * 0.4 + ${fashionModels.totalInteractions} * 0.2)`),
+        desc(fashionModels.isFeatured),
+        desc(fashionModels.usage)
+      )
+      .limit(limit);
+  }
+
+  async refreshRecentUsageStats(): Promise<void> {
+    // Reset recent usage to count only last 30 days
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    // Get usage counts from analytics for the last 30 days
+    const recentUsageCounts = await db
+      .select({
+        modelId: fashionModelAnalytics.modelId,
+        count: count(fashionModelAnalytics.id)
+      })
+      .from(fashionModelAnalytics)
+      .where(
+        and(
+          gte(fashionModelAnalytics.createdAt, thirtyDaysAgo),
+          sql`${fashionModelAnalytics.eventType} IN ('ai_process', 'product_assign')`
+        )
+      )
+      .groupBy(fashionModelAnalytics.modelId);
+
+    // Update each model's recent usage
+    for (const usage of recentUsageCounts) {
+      await db
+        .update(fashionModels)
+        .set({ 
+          recentUsage: usage.count,
+          updatedAt: new Date() 
+        })
+        .where(eq(fashionModels.id, usage.modelId));
+    }
+
+    // Reset models not found in recent usage to 0
+    await db
+      .update(fashionModels)
+      .set({ 
+        recentUsage: 0,
+        updatedAt: new Date() 
+      })
+      .where(
+        sql`${fashionModels.id} NOT IN (${recentUsageCounts.map(u => `'${u.modelId}'`).join(',')})`
+      );
   }
 }
 

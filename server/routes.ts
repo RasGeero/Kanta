@@ -1293,6 +1293,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Implement actual Fashn.ai API call
       console.log('Mannequin overlay requested:', { imageUrl, garmentType, mannequinGender });
+      const processingStartTime = Date.now();
       
       try {
         // Get appropriate fashion model from database using smart selection
@@ -1308,12 +1309,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         if (fashionModel && fashionModel.id) {
           // Use the provided fashion model from the client
-          selectedModel = fashionModel;
+          selectedModel = fashionModel; // IMPORTANT: Set selectedModel for success/error tracking
           modelImageUrl = fashionModel.imageUrl;
           console.log(`Using client-selected fashion model: ${fashionModel.name} (${fashionModel.gender})`);
           
-          // Track usage of the selected model
-          await storage.incrementFashionModelUsage(fashionModel.id);
+          // Track analytics event (usage will be incremented in updateFashionModelMetrics)
+          await storage.trackFashionModelEvent({
+            modelId: fashionModel.id,
+            eventType: 'ai_process',
+            context: {
+              garmentType,
+              gender: mannequinGender,
+              source: 'ai_studio'
+            }
+          });
         } else if (allActiveFashionModels.length > 0) {
           // Fall back to smart selection if no fashion model provided
           selectedModel = selectBestFashionModel(allActiveFashionModels, genderFilter, garmentType);
@@ -1322,8 +1331,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             modelImageUrl = selectedModel.imageUrl;
             console.log(`Using smart-selected fashion model: ${selectedModel.name} (${selectedModel.gender}) for gender: ${mannequinGender}`);
             
-            // Track usage of the selected model
-            await storage.incrementFashionModelUsage(selectedModel.id);
+            // Track analytics event (usage will be incremented in updateFashionModelMetrics)
+            await storage.trackFashionModelEvent({
+              modelId: selectedModel.id,
+              eventType: 'ai_process',
+              context: {
+                garmentType,
+                gender: mannequinGender,
+                source: 'ai_studio'
+              }
+            });
           }
         }
         
@@ -1410,6 +1427,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Success - return the virtual try-on result
+        const processingEndTime = Date.now();
+        const processingTime = processingEndTime - processingStartTime;
+        
+        // Track success metrics
+        if (selectedModel) {
+          await storage.updateFashionModelMetrics(selectedModel.id, true, processingTime);
+        }
+        
         return res.json({
           success: true,
           processedImageUrl: finalResult.output[0],
@@ -1418,6 +1443,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       } catch (error) {
         console.error('Fashn.ai processing error:', error);
+        
+        // Track failure metrics
+        if (selectedModel) {
+          const processingEndTime = Date.now();
+          const processingTime = processingEndTime - processingStartTime;
+          await storage.updateFashionModelMetrics(selectedModel.id, false, processingTime);
+        }
+        
         // Fallback to background-removed image
         return res.json({
           success: true,
@@ -1873,11 +1906,11 @@ function selectBestFashionModel(
     return null;
   }
 
-  // Score fashion models based on multiple criteria
+  // Enhanced scoring with analytics-driven metrics
   const scoredModels = allFashionModels.map(model => {
     let score = 0;
     
-    // Gender matching (highest priority)
+    // Gender matching (highest priority - 100 points)
     if (model.gender === preferredGender) {
       score += 100;
     } else if (model.gender === 'unisex') {
@@ -1886,28 +1919,54 @@ function selectBestFashionModel(
       score += 20; // Wrong gender gets low score
     }
     
-    // Category matching (medium priority)
+    // Category matching (high priority - up to 60 points)
     const garmentCategory = mapGarmentToCategory(garmentType);
     if (model.category === garmentCategory) {
-      score += 50; // Perfect category match
+      score += 60; // Perfect category match gets more weight
     } else if (model.category === 'general') {
-      score += 30; // General category is good fallback
+      score += 35; // General category is good fallback
+    } else {
+      // Partial match bonus for related categories
+      const categoryBonus = getCategoryCompatibilityScore(model.category, garmentCategory);
+      score += categoryBonus;
     }
     
-    // Featured status bonus (medium priority)
+    // Success rate bonus (high priority - up to 30 points)
+    const successRate = Number(model.successRate || 0);
+    if (successRate > 0) {
+      score += (successRate / 100) * 30; // Scale 0-100% to 0-30 points
+    }
+    
+    // Recent usage trend (medium priority - up to 25 points)
+    const recentUsage = model.recentUsage || 0;
+    const totalUsage = model.usage || 0;
+    
+    // Reward models with recent activity but not completely overused
+    if (recentUsage > 0) {
+      const recentUsageScore = Math.min(15, recentUsage * 2); // Cap at 15 points
+      const diversityBonus = totalUsage > 50 ? -5 : 0; // Slight penalty for overused models
+      score += recentUsageScore + diversityBonus;
+    }
+    
+    // Featured status bonus (medium priority - 20 points)
     if (model.isFeatured) {
-      score += 40; // Featured models get priority
+      score += 20;
     }
     
-    // Sort order (lower sort order = higher priority)
-    score += Math.max(0, 20 - (model.sortOrder || 0));
+    // Total interactions bonus (lower priority - up to 15 points)
+    const interactions = model.totalInteractions || 0;
+    const interactionScore = Math.min(15, interactions * 0.1);
+    score += interactionScore;
     
-    // Usage-based scoring (reward popular models slightly)
-    const usageBonus = Math.min(10, (model.usage || 0) * 0.1);
-    score += usageBonus;
+    // Sort order bonus (administrative priority - up to 15 points)
+    score += Math.max(0, 15 - (model.sortOrder || 0));
     
-    // Add small random factor for variety (0-5 points, less than before)
-    score += Math.random() * 5;
+    // Legacy usage bonus (minimal weight - up to 10 points)
+    const legacyUsageBonus = Math.min(10, totalUsage * 0.05);
+    score += legacyUsageBonus;
+    
+    // Small random factor for variety (reduced - 0-3 points)
+    score += Math.random() * 3;
     
     return { model, score };
   });
@@ -1915,12 +1974,26 @@ function selectBestFashionModel(
   // Sort by score (highest first) and return the best match
   scoredModels.sort((a, b) => b.score - a.score);
   
-  console.log(`Fashion model selection scores for ${preferredGender} ${garmentType}:`);
+  console.log(`Enhanced fashion model selection scores for ${preferredGender} ${garmentType}:`);
   scoredModels.slice(0, 3).forEach((item, index) => {
-    console.log(`  ${index + 1}. ${item.model.name} (${item.model.gender}, ${item.model.category}): ${item.score.toFixed(1)}`);
+    const model = item.model;
+    console.log(`  ${index + 1}. ${model.name} (${model.gender}, ${model.category}): ${item.score.toFixed(1)} [Success: ${model.successRate || 0}%, Recent: ${model.recentUsage || 0}, Total: ${model.usage || 0}]`);
   });
   
   return scoredModels[0]?.model || null;
+}
+
+// Helper function for category compatibility scoring
+function getCategoryCompatibilityScore(modelCategory: string, garmentCategory: string): number {
+  const compatibility: Record<string, Record<string, number>> = {
+    'formal': { 'evening': 15, 'general': 10 },
+    'evening': { 'formal': 15, 'general': 10 },
+    'casual': { 'general': 15, 'athletic': 10 },
+    'athletic': { 'casual': 10, 'general': 8 },
+    'general': { 'formal': 10, 'evening': 10, 'casual': 10, 'athletic': 8 }
+  };
+  
+  return compatibility[modelCategory]?.[garmentCategory] || 5; // Default small bonus
 }
 
 // Helper function to map garment types to categories

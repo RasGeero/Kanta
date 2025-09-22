@@ -167,9 +167,32 @@ export const fashionModels = pgTable("fashion_models", {
   isFeatured: boolean("is_featured").default(false), // for highlighting popular models
   sortOrder: integer("sort_order").default(0), // for custom ordering
   usage: integer("usage").default(0), // track how often this model is used
+  recentUsage: integer("recent_usage").default(0), // usage in last 30 days
+  successRate: decimal("success_rate", { precision: 5, scale: 2 }).default("0"), // percentage of successful AI generations
+  totalInteractions: integer("total_interactions").default(0), // includes views, selections, and usage
   tags: json("tags").$type<string[]>().notNull().default(sql`'[]'::json`), // additional searchable tags
   createdAt: timestamp("created_at").default(sql`now()`),
   updatedAt: timestamp("updated_at").default(sql`now()`),
+});
+
+// Enhanced usage analytics table for detailed tracking
+export const fashionModelAnalytics = pgTable("fashion_model_analytics", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  modelId: varchar("model_id").notNull().references(() => fashionModels.id),
+  userId: varchar("user_id").references(() => users.id), // optional - for anonymous users
+  sessionId: text("session_id"), // for tracking user sessions
+  eventType: text("event_type").notNull(), // view, select, ai_process, product_assign, success, error
+  context: json("context").$type<{
+    garmentType?: string;
+    category?: string;
+    gender?: string;
+    source?: string; // ai_studio, product_upload, gallery
+    aiProvider?: string; // fashn_ai, remove_bg
+    processingTime?: number; // milliseconds
+    errorMessage?: string;
+  }>(),
+  metadata: json("metadata").$type<Record<string, any>>().default(sql`'{}'::json`), // flexible additional data
+  createdAt: timestamp("created_at").default(sql`now()`),
 });
 
 // Gender type for consistency across frontend and backend  
@@ -198,7 +221,14 @@ export const insertFashionModelSchema = createInsertSchema(fashionModels).omit({
   id: true, 
   createdAt: true, 
   updatedAt: true,
-  usage: true 
+  usage: true,
+  recentUsage: true,
+  successRate: true,
+  totalInteractions: true
+});
+export const insertFashionModelAnalyticsSchema = createInsertSchema(fashionModelAnalytics).omit({ 
+  id: true, 
+  createdAt: true 
 });
 
 // Types
@@ -220,6 +250,8 @@ export type CartItem = typeof cartItems.$inferSelect;
 export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
 export type FashionModel = typeof fashionModels.$inferSelect;
 export type InsertFashionModel = z.infer<typeof insertFashionModelSchema>;
+export type FashionModelAnalytics = typeof fashionModelAnalytics.$inferSelect;
+export type InsertFashionModelAnalytics = z.infer<typeof insertFashionModelAnalyticsSchema>;
 
 // Extended types with relations
 export type ProductWithSeller = Product & {
