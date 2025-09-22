@@ -14,8 +14,8 @@ import type {
   InsertReport,
   CartItem,
   InsertCartItem,
-  Mannequin,
-  InsertMannequin
+  FashionModel,
+  InsertFashionModel
 } from "@shared/schema";
 
 // Extended cart types
@@ -128,6 +128,14 @@ export const productApi = {
 
   updateProduct: async (id: string, updates: Partial<InsertProduct>): Promise<ProductWithSeller> => {
     const response = await apiRequest('PUT', `/api/products/${id}`, updates);
+    return response.json();
+  },
+
+  updateProductModel: async (id: string, modelId: string, aiPreviewUrl?: string): Promise<ProductWithSeller> => {
+    const response = await apiRequest('PATCH', `/api/products/${id}/model`, {
+      modelId,
+      aiPreviewUrl
+    });
     return response.json();
   },
 
@@ -290,62 +298,62 @@ export const reportApi = {
   },
 };
 
-// Mannequin API
-export const mannequinApi = {
-  getAllMannequins: async (): Promise<Mannequin[]> => {
-    const response = await apiRequest('GET', '/api/mannequins');
+// Fashion Model API
+export const fashionModelApi = {
+  getAllFashionModels: async (): Promise<FashionModel[]> => {
+    const response = await apiRequest('GET', '/api/fashion-models');
     const result = await response.json();
     return result.data || [];
   },
 
-  getActiveMannequins: async (): Promise<Mannequin[]> => {
-    const response = await apiRequest('GET', '/api/mannequins?active=true');
+  getActiveFashionModels: async (): Promise<FashionModel[]> => {
+    const response = await apiRequest('GET', '/api/fashion-models?active=true');
     const result = await response.json();
     return result.data || [];
   },
 
-  getMannequin: async (id: string): Promise<Mannequin> => {
-    const response = await apiRequest('GET', `/api/mannequins/${id}`);
+  getFashionModel: async (id: string): Promise<FashionModel> => {
+    const response = await apiRequest('GET', `/api/fashion-models/${id}`);
     return response.json();
   },
 
-  createMannequin: async (mannequinData: FormData): Promise<Mannequin> => {
-    const response = await fetch('/api/mannequins', {
+  createFashionModel: async (fashionModelData: FormData): Promise<FashionModel> => {
+    const response = await fetch('/api/fashion-models', {
       method: 'POST',
-      body: mannequinData,
+      body: fashionModelData,
     });
     if (!response.ok) {
-      throw new Error('Failed to create mannequin');
+      throw new Error('Failed to create fashion model');
     }
     return response.json();
   },
 
-  updateMannequin: async (id: string, mannequinData: FormData): Promise<Mannequin> => {
-    const response = await fetch(`/api/mannequins/${id}`, {
+  updateFashionModel: async (id: string, fashionModelData: FormData): Promise<FashionModel> => {
+    const response = await fetch(`/api/fashion-models/${id}`, {
       method: 'PUT',
-      body: mannequinData,
+      body: fashionModelData,
     });
     if (!response.ok) {
-      throw new Error('Failed to update mannequin');
+      throw new Error('Failed to update fashion model');
     }
     return response.json();
   },
 
-  deleteMannequin: async (id: string): Promise<void> => {
-    await apiRequest('DELETE', `/api/mannequins/${id}`);
+  deleteFashionModel: async (id: string): Promise<void> => {
+    await apiRequest('DELETE', `/api/fashion-models/${id}`);
   },
 
-  toggleMannequinStatus: async (id: string, isActive: boolean): Promise<void> => {
-    await apiRequest('PATCH', `/api/mannequins/${id}/toggle`, { isActive });
+  toggleFashionModelStatus: async (id: string, isActive: boolean): Promise<void> => {
+    await apiRequest('PATCH', `/api/fashion-models/${id}/toggle`, { isActive });
   },
 
-  searchMannequins: async (params: {
+  searchFashionModels: async (params: {
     gender?: string;
     bodyType?: string;
     ethnicity?: string;
     category?: string;
     tags?: string[];
-  }): Promise<Mannequin[]> => {
+  }): Promise<FashionModel[]> => {
     const queryParams = new URLSearchParams();
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined) {
@@ -357,7 +365,19 @@ export const mannequinApi = {
       }
     });
     
-    const response = await apiRequest('GET', `/api/mannequins?${queryParams}`);
+    const response = await apiRequest('GET', `/api/fashion-models?${queryParams}`);
     return response.json();
+  },
+
+  getRecommendedFashionModels: async (garmentType: string, gender: string, limit?: number): Promise<FashionModel[]> => {
+    const queryParams = new URLSearchParams({
+      garmentType,
+      gender,
+      ...(limit && { limit: limit.toString() })
+    });
+    
+    const response = await apiRequest('GET', `/api/fashion-models/recommended?${queryParams}`);
+    const result = await response.json();
+    return result.data || [];
   },
 };

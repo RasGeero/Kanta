@@ -588,6 +588,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update product's selected fashion model
+  app.patch("/api/products/:id/model", requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const updateModelSchema = z.object({
+        modelId: z.string().min(1, "Model ID is required"),
+        aiPreviewUrl: z.string().min(1).optional()
+      });
+
+      const { modelId, aiPreviewUrl: rawPreviewUrl } = updateModelSchema.parse(req.body);
+
+      // Handle data URL conversion to Cloudinary if needed
+      let aiPreviewUrl = rawPreviewUrl;
+      if (rawPreviewUrl && rawPreviewUrl.startsWith('data:image/')) {
+        try {
+          aiPreviewUrl = await handleDataUrlToCloudinary(rawPreviewUrl, `ai-preview-${id}`);
+        } catch (error) {
+          console.error('Failed to upload AI preview to Cloudinary:', error);
+          // Continue with original data URL as fallback
+        }
+      }
+
+      // Verify the product exists and belongs to the user
+      const existingProduct = await storage.getProduct(id);
+      if (!existingProduct) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      // Check if user owns the product or is admin
+      if (existingProduct.sellerId !== req.session.userId && req.session.userRole !== 'admin') {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Verify the fashion model exists and is active
+      const model = await storage.getFashionModel(modelId);
+      if (!model || !model.isActive) {
+        return res.status(400).json({ message: "Invalid or inactive fashion model" });
+      }
+
+      const updatedProduct = await storage.updateProductModel(id, modelId, aiPreviewUrl);
+      
+      if (!updatedProduct) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      // Return the product with seller details
+      const productWithSeller = await storage.getProductWithSeller(id);
+      
+      if (!productWithSeller) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      res.json(productWithSeller);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      console.error('Update product model error:', error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.post("/api/products/:id/approve", requireRole('admin'), async (req, res) => {
     try {
       const success = await storage.approveProduct(req.params.id);

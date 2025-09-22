@@ -14,6 +14,8 @@ import {
   Crown
 } from "lucide-react";
 import { useLocation } from "wouter";
+import { useMutation } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -22,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { aiProcessing } from "@/services/ai-processing";
+import { productApi } from "@/services/api";
 import FashionModelSelector from "@/components/ai-studio/FashionModelSelector";
 import { FashionModel } from "@/types/models";
 
@@ -30,6 +33,7 @@ interface AIStudioResult {
   productTitle: string;
   suggestedCategory: string;
   suggestedDescription: string;
+  productId?: string;
 }
 
 export default function AIStudio() {
@@ -45,9 +49,71 @@ export default function AIStudio() {
   const [autoDetectGarmentType, setAutoDetectGarmentType] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiResult, setAiResult] = useState<AIStudioResult | null>(null);
+  const [currentProductId, setCurrentProductId] = useState<string | null>(null);
 
   // Mock seller ID - in production, get from authentication
   const sellerId = "seller-id-placeholder";
+
+  // Mutation for creating product
+  const createProductMutation = useMutation({
+    mutationFn: (formData: FormData) => productApi.createProduct(formData),
+    onSuccess: (product) => {
+      setCurrentProductId(product.id);
+      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+      toast({
+        title: "Product Created",
+        description: "Draft product has been created successfully.",
+      });
+      
+      // If a model is already selected, update the product with it
+      if (selectedModel && aiResult) {
+        updateProductModelMutation.mutate({
+          productId: product.id,
+          modelId: selectedModel.id,
+          aiPreviewUrl: aiResult.generatedImage
+        });
+      }
+    },
+    onError: (error) => {
+      toast({
+        title: "Product Creation Failed",
+        description: error instanceof Error ? error.message : "Failed to create draft product.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Mutation for updating product model
+  const updateProductModelMutation = useMutation({
+    mutationFn: ({ productId, modelId, aiPreviewUrl }: { 
+      productId: string; 
+      modelId: string; 
+      aiPreviewUrl?: string; 
+    }) => productApi.updateProductModel(productId, modelId, aiPreviewUrl),
+    onSuccess: (updatedProduct) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/products'] });
+      
+      // Update the preview with the server-returned Cloudinary URL if available
+      if (updatedProduct.aiPreviewUrl && aiResult) {
+        setAiResult({
+          ...aiResult,
+          generatedImage: updatedProduct.aiPreviewUrl
+        });
+      }
+      
+      toast({
+        title: "Model Updated",
+        description: "Fashion model selection has been saved.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Update Failed",
+        description: error instanceof Error ? error.message : "Failed to update model selection.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleGarmentUpload = (file: File) => {
     setGarmentImage(file);
@@ -56,6 +122,20 @@ export default function AIStudio() {
       setGarmentImagePreview(e.target?.result as string);
     };
     reader.readAsDataURL(file);
+  };
+
+  // Handle model selection change
+  const handleModelSelect = (model: FashionModel | null) => {
+    setSelectedModel(model);
+    
+    // If we have a current product and a model is selected, update the product
+    if (currentProductId && model) {
+      updateProductModelMutation.mutate({
+        productId: currentProductId,
+        modelId: model.id,
+        aiPreviewUrl: aiResult?.generatedImage
+      });
+    }
   };
 
 
@@ -99,6 +179,21 @@ export default function AIStudio() {
         };
         
         setAiResult(aiResult);
+        
+        // Create a draft product in the database
+        const formData = new FormData();
+        formData.append('image', garmentImage);
+        formData.append('title', aiResult.productTitle);
+        formData.append('description', aiResult.suggestedDescription);
+        formData.append('category', aiResult.suggestedCategory);
+        formData.append('condition', 'excellent');
+        formData.append('price', '0'); // Placeholder price
+        formData.append('sellerId', sellerId);
+        formData.append('status', 'draft');
+        formData.append('gender', genderPreference);
+        
+        // Create the product
+        createProductMutation.mutate(formData);
         
         toast({
           title: "AI Processing Complete",
@@ -324,7 +419,7 @@ export default function AIStudio() {
         {/* Panel 2: Select Fashion Model */}
         <FashionModelSelector
           selectedModel={selectedModel}
-          onModelSelect={setSelectedModel}
+          onModelSelect={handleModelSelect}
           garmentCategory={category}
           preferredGender={category === 'Top' ? 'unisex' : 'unisex'} // Could enhance based on garment category
         />

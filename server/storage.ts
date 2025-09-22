@@ -51,6 +51,7 @@ export interface IStorage {
   getProductWithSeller(id: string): Promise<ProductWithSeller | undefined>;
   createProduct(product: InsertProduct): Promise<Product>;
   updateProduct(id: string, updates: Partial<Product>): Promise<Product | undefined>;
+  updateProductModel(id: string, modelId: string, aiPreviewUrl?: string): Promise<Product | undefined>;
   deleteProduct(id: string): Promise<boolean>;
   getProductsBySeller(sellerId: string): Promise<Product[]>;
   searchProducts(query: {
@@ -440,10 +441,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProduct(insertProduct: InsertProduct): Promise<Product> {
-    const [product] = await db.insert(products).values({
-      ...insertProduct,
-      images: insertProduct.images || []
-    }).returning();
+    const [product] = await db.insert(products).values(insertProduct).returning();
     return product;
   }
 
@@ -453,6 +451,31 @@ export class DatabaseStorage implements IStorage {
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(products.id, id))
       .returning();
+    return product || undefined;
+  }
+
+  async updateProductModel(id: string, modelId: string, aiPreviewUrl?: string): Promise<Product | undefined> {
+    const [product] = await db
+      .update(products)
+      .set({ 
+        selectedModelId: modelId, 
+        aiPreviewUrl: aiPreviewUrl || null,
+        updatedAt: new Date() 
+      })
+      .where(eq(products.id, id))
+      .returning();
+    
+    // Increment usage count for the selected model
+    if (product) {
+      await db
+        .update(fashionModels)
+        .set({
+          usage: sql`${fashionModels.usage} + 1`,
+          updatedAt: new Date()
+        })
+        .where(eq(fashionModels.id, modelId));
+    }
+    
     return product || undefined;
   }
 
