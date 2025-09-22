@@ -123,6 +123,8 @@ function requireRole(role: string) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Initialize seed data if database is empty
+  await storage.initializeSeedDataIfEmpty();
   
   // Authentication routes
   app.post("/api/auth/register", async (req, res) => {
