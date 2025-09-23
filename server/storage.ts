@@ -150,7 +150,7 @@ export class DatabaseStorage implements IStorage {
         {
           username: "admin",
           email: "admin@kantamanto.com",
-          password: "$2b$12$GdrNsN2xXGtiPfhLduT2Ee6QqrDRuGK1bpsRCSlyLitUwvy/FCF8q",
+          password: "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBdXig/goZ5HVe", // admin123
           firstName: "Admin",
           lastName: "User",
           phone: "+233123456789",
