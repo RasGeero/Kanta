@@ -107,11 +107,11 @@ export default function FashionModelGallery({
 
   // Enhanced filtering and sorting with useMemo for performance
   const filteredAndSortedModels = useMemo(() => {
-    let filtered = models.filter(model => {
+    let filtered = models.filter((model: FashionModel) => {
       // Text search
       const matchesSearch = debouncedSearchQuery === "" || 
         model.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
-        model.tags.some(tag => tag.toLowerCase().includes(debouncedSearchQuery.toLowerCase()));
+        model.tags.some((tag: string) => tag.toLowerCase().includes(debouncedSearchQuery.toLowerCase()));
 
       // Gender filter (client-side backup for instant UI feedback)
       const matchesGender = genderFilter === 'all' || model.gender === genderFilter;
@@ -129,7 +129,7 @@ export default function FashionModelGallery({
     });
 
     // Sort the filtered results
-    filtered.sort((a, b) => {
+    filtered.sort((a: FashionModel, b: FashionModel) => {
       switch (sortBy) {
         case 'featured':
           // Featured models first, then by usage
@@ -153,9 +153,9 @@ export default function FashionModelGallery({
 
   // Get unique filter options from loaded models
   const filterOptions = useMemo(() => {
-    const bodyTypes = [...new Set(models.map(m => m.bodyType))].filter(Boolean).sort();
-    const ethnicities = [...new Set(models.map(m => m.ethnicity))].filter(Boolean).sort();
-    return { bodyTypes, ethnicities };
+    const bodyTypes = Array.from(new Set(models.map((m: FashionModel) => m.bodyType))).filter(Boolean) as string[];
+    const ethnicities = Array.from(new Set(models.map((m: FashionModel) => m.ethnicity))).filter(Boolean) as string[];
+    return { bodyTypes: bodyTypes.sort(), ethnicities: ethnicities.sort() };
   }, [models]);
 
   // Clear all filters function
@@ -173,7 +173,7 @@ export default function FashionModelGallery({
                           bodyTypeFilter !== "all" || ethnicityFilter !== "all";
 
   const FeaturedSection = () => {
-    const featuredModels = filteredAndSortedModels.filter(model => model.isFeatured).slice(0, 3);
+    const featuredModels = filteredAndSortedModels.filter((model: FashionModel) => model.isFeatured).slice(0, 3);
 
     if (featuredModels.length === 0) return null;
 
@@ -184,7 +184,7 @@ export default function FashionModelGallery({
           Featured Models
         </h3>
         <div className="grid grid-cols-3 gap-2">
-          {featuredModels.map((model) => (
+          {featuredModels.map((model: FashionModel) => (
             <ModelCard key={model.id} model={model} size="small" />
           ))}
         </div>
@@ -511,7 +511,7 @@ export default function FashionModelGallery({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Body Types</SelectItem>
-                {filterOptions.bodyTypes.map(type => (
+                {filterOptions.bodyTypes.map((type: string) => (
                   <SelectItem key={type} value={type}>{type}</SelectItem>
                 ))}
               </SelectContent>
@@ -523,7 +523,7 @@ export default function FashionModelGallery({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Ethnicities</SelectItem>
-                {filterOptions.ethnicities.map(ethnicity => (
+                {filterOptions.ethnicities.map((ethnicity: string) => (
                   <SelectItem key={ethnicity} value={ethnicity}>{ethnicity}</SelectItem>
                 ))}
               </SelectContent>
@@ -570,13 +570,13 @@ export default function FashionModelGallery({
                   </div>
                 ) : viewMode === "gallery" ? (
                   <div className="grid grid-cols-2 gap-3">
-                    {filteredAndSortedModels.map((model) => (
+                    {filteredAndSortedModels.map((model: FashionModel) => (
                       <ModelCard key={model.id} model={model} size="medium" />
                     ))}
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    {filteredAndSortedModels.map((model) => (
+                    {filteredAndSortedModels.map((model: FashionModel) => (
                       <ListModelCard key={model.id} model={model} />
                     ))}
                   </div>
