@@ -78,7 +78,7 @@ export default function FashionModelGallery({
   };
 
   const { data: models = [], isLoading, error } = useQuery({
-    queryKey: ['/api/fashion-models', buildQueryString()],
+    queryKey: [`/api/fashion-models?${buildQueryString()}`],
     select: (res: any) => res?.data || [] as FashionModel[]
   });
 
@@ -91,7 +91,7 @@ export default function FashionModelGallery({
   };
 
   const { data: recommendedModels = [] } = useQuery({
-    queryKey: ['/api/fashion-models/recommended', buildRecommendedQueryString()],
+    queryKey: [`/api/fashion-models/recommended?${buildRecommendedQueryString()}`],
     enabled: Boolean(garmentCategory && preferredGender), // Only when both params are available
     select: (res: any) => res?.data || [] as FashionModel[]
   });
