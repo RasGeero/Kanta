@@ -24,7 +24,11 @@ const mannequinFormSchema = insertFashionModelSchema.extend({
   tagsString: z.string().optional(),
   height: z.coerce.number().int().positive().optional(),
   sortOrder: z.coerce.number().int().optional()
-}).omit({ tags: true, imageUrl: true, cloudinaryPublicId: true });
+}).omit({ tags: true, imageUrl: true, cloudinaryPublicId: true })
+.refine(
+  (data) => true, // We'll validate image in onSubmit since we can't access imageFile here
+  { message: "Image file is required" }
+);
 
 type MannequinFormData = z.infer<typeof mannequinFormSchema>;
 
@@ -290,6 +294,35 @@ export default function AdminDashboard() {
   };
 
   const onSubmitMannequin = (data: MannequinFormData) => {
+    // Validate required fields for new models
+    if (!selectedMannequin && !imageFile) {
+      toast({
+        title: "Image Required",
+        description: "Please upload an image file for the new model.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate required fields
+    if (!data.name.trim()) {
+      toast({
+        title: "Name Required",
+        description: "Please enter a name for the model.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!data.gender) {
+      toast({
+        title: "Gender Required", 
+        description: "Please select a gender for the model.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const formData = new FormData();
     
     // Add all form fields

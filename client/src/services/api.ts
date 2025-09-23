@@ -324,6 +324,15 @@ export const fashionModelApi = {
     });
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({ message: 'Failed to create fashion model' }));
+      
+      // If we have specific validation errors, format them nicely
+      if (errorData.errors && Array.isArray(errorData.errors)) {
+        const errorMessages = errorData.errors.map((err: any) => 
+          `${err.path?.join?.('.') || 'Field'}: ${err.message}`
+        ).join('\n');
+        throw new Error(`Validation failed:\n${errorMessages}`);
+      }
+      
       throw new Error(errorData.message || `Failed to create fashion model (${response.status})`);
     }
     const result = await response.json();
