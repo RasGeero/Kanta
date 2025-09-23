@@ -323,9 +323,11 @@ export const fashionModelApi = {
       body: fashionModelData,
     });
     if (!response.ok) {
-      throw new Error('Failed to create fashion model');
+      const errorData = await response.json().catch(() => ({ message: 'Failed to create fashion model' }));
+      throw new Error(errorData.message || `Failed to create fashion model (${response.status})`);
     }
-    return response.json();
+    const result = await response.json();
+    return result.data || result;
   },
 
   updateFashionModel: async (id: string, fashionModelData: FormData): Promise<FashionModel> => {
@@ -334,9 +336,11 @@ export const fashionModelApi = {
       body: fashionModelData,
     });
     if (!response.ok) {
-      throw new Error('Failed to update fashion model');
+      const errorData = await response.json().catch(() => ({ message: 'Failed to update fashion model' }));
+      throw new Error(errorData.message || `Failed to update fashion model (${response.status})`);
     }
-    return response.json();
+    const result = await response.json();
+    return result.data || result;
   },
 
   deleteFashionModel: async (id: string): Promise<void> => {
