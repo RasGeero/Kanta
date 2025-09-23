@@ -463,7 +463,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProduct(insertProduct: InsertProduct): Promise<Product> {
-    const [product] = await db.insert(products).values([insertProduct]).returning();
+    const [product] = await db.insert(products).values(insertProduct as typeof products.$inferInsert).returning();
     return product;
   }
 
@@ -1166,7 +1166,7 @@ export class DatabaseStorage implements IStorage {
   async trackFashionModelEvent(event: InsertFashionModelAnalytics): Promise<FashionModelAnalytics> {
     const [created] = await db
       .insert(fashionModelAnalytics)
-      .values([event])
+      .values(event as typeof fashionModelAnalytics.$inferInsert)
       .returning();
     
     // Update interaction count when tracking view/select events
