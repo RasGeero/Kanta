@@ -1,8 +1,6 @@
 #!/usr/bin/env node
-const fs = require('fs');
-const path = require('path');
-const fetch = require('node-fetch');
-const FormData = require('form-data');
+import fs from 'fs';
+import path from 'path';
 
 // Mannequin data with corresponding image files
 const mannequinsData = [
@@ -160,8 +158,22 @@ const mannequinsData = [
 
 const API_BASE = process.env.API_BASE_URL || 'http://localhost:5000';
 
+// Read session cookies for authentication
+let sessionCookie = '';
+try {
+  const cookies = fs.readFileSync('cookies.txt', 'utf8');
+  const sessionMatch = cookies.match(/connect\.sid\s+([^\s]+)/);
+  if (sessionMatch) {
+    sessionCookie = `connect.sid=${sessionMatch[1]}`;
+  }
+} catch (error) {
+  console.error('❌ No session cookies found. Please log in first.');
+  process.exit(1);
+}
+
 async function createMannequin(mannequinData) {
   try {
+    const FormData = (await import('form-data')).default;
     const formData = new FormData();
     
     // Add image file
@@ -187,13 +199,11 @@ async function createMannequin(mannequinData) {
     formData.append('sortOrder', mannequinData.sortOrder.toString());
     formData.append('tags', JSON.stringify(mannequinData.tags));
     
-    const response = await fetch(`${API_BASE}/api/mannequins`, {
+    const response = await fetch(`${API_BASE}/api/fashion-models`, {
       method: 'POST',
       body: formData,
       headers: {
-        // Note: This would require admin authentication in production
-        // For seeding purposes, we might need to temporarily disable auth check
-        // or use a service account
+        'Cookie': sessionCookie
       }
     });
     
