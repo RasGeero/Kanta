@@ -3,7 +3,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { v2 as cloudinary } from 'cloudinary';
 import { storage } from './storage.js';
-import type { InsertMannequin } from '@shared/schema';
+import type { InsertFashionModel } from '@shared/schema';
 
 // Helper function to upload buffer to Cloudinary (copied from routes.ts)
 async function uploadToCloudinary(buffer: Buffer, options: {
@@ -14,7 +14,7 @@ async function uploadToCloudinary(buffer: Buffer, options: {
   return new Promise((resolve, reject) => {
     const uploadOptions = {
       resource_type: 'image' as const,
-      folder: options.folder || 'mannequins',
+      folder: options.folder || 'models',
       public_id: options.public_id || undefined,
       format: options.format || 'jpg',
       overwrite: true,
@@ -37,7 +37,7 @@ async function uploadToCloudinary(buffer: Buffer, options: {
 }
 
 // Fashion model data with corresponding image files
-const mannequinsData: Array<Omit<InsertMannequin, 'imageUrl' | 'cloudinaryPublicId'> & { imageFile: string }> = [
+const modelsData: Array<Omit<InsertFashionModel, 'imageUrl' | 'cloudinaryPublicId'> & { imageFile: string }> = [
   {
     name: 'Elena - Professional Female Model',
     imageFile: 'attached_assets/stock_images/female_fashion_model_87f5c94a.jpg',
@@ -190,43 +190,43 @@ const mannequinsData: Array<Omit<InsertMannequin, 'imageUrl' | 'cloudinaryPublic
   }
 ];
 
-async function seedMannequins() {
+async function seedModels() {
   try {
     console.log('🌱 Starting fashion model seeding process...');
-    console.log(`📊 Planning to create ${mannequinsData.length} fashion models`);
+    console.log(`📊 Planning to create ${modelsData.length} fashion models`);
     
     let successCount = 0;
     let failureCount = 0;
     
-    for (const mannequinData of mannequinsData) {
+    for (const modelData of modelsData) {
       try {
-        console.log(`📤 Processing ${mannequinData.name}...`);
+        console.log(`📤 Processing ${modelData.name}...`);
         
         // Read image file
-        const imagePath = join(process.cwd(), mannequinData.imageFile);
+        const imagePath = join(process.cwd(), modelData.imageFile);
         const imageBuffer = readFileSync(imagePath);
         
         // Upload to Cloudinary
-        const publicId = `mannequin-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const publicId = `model-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         const imageUrl = await uploadToCloudinary(imageBuffer, {
-          folder: 'mannequins',
+          folder: 'models',
           public_id: publicId,
           format: 'jpg'
         });
         
-        // Create mannequin record
-        const mannequin: InsertMannequin = {
-          ...mannequinData,
+        // Create model record
+        const model: InsertFashionModel = {
+          ...modelData,
           imageUrl,
           cloudinaryPublicId: publicId
         };
         
-        const createdMannequin = await storage.createMannequin(mannequin);
-        console.log(`✅ Created fashion model: ${mannequinData.name} - ${imageUrl}`);
+        const createdModel = await storage.createFashionModel(model);
+        console.log(`✅ Created fashion model: ${modelData.name} - ${imageUrl}`);
         successCount++;
         
       } catch (error) {
-        console.error(`❌ Failed to create fashion model ${mannequinData.name}:`, error);
+        console.error(`❌ Failed to create fashion model ${modelData.name}:`, error);
         failureCount++;
       }
       
@@ -254,11 +254,11 @@ async function seedMannequins() {
 }
 
 // Export for use in other files
-export { seedMannequins };
+export { seedModels };
 
 // Run directly if this file is executed
 if (import.meta.url === `file://${process.argv[1]}`) {
-  seedMannequins()
+  seedModels()
     .then(success => {
       process.exit(success ? 0 : 1);
     })

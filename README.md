@@ -6,7 +6,7 @@ A modern, AI-powered thrift marketplace connecting buyers and sellers of second-
 
 ### For Buyers
 - 🛍️ Browse and search thousands of unique thrift items
-- 🤖 AI-powered virtual try-on with mannequin overlay
+- 🤖 AI-powered virtual try-on with model overlay
 - 💬 Chat directly with sellers
 - 💳 Secure payments with Paystack and Mobile Money
 - ❤️ Wishlist and save favorite items
@@ -15,7 +15,7 @@ A modern, AI-powered thrift marketplace connecting buyers and sellers of second-
 
 ### For Sellers
 - 📸 Upload product photos with automatic AI processing
-- 🎨 Background removal and mannequin overlay via Remove.bg and Fashn.ai
+- 🎨 Background removal and model overlay via Remove.bg and Fashn.ai
 - 📊 Seller dashboard with analytics and performance metrics
 - 📦 Order management and inventory tracking
 - 💰 Direct payments to your Mobile Money or bank account
@@ -49,7 +49,7 @@ A modern, AI-powered thrift marketplace connecting buyers and sellers of second-
 - **Paystack** for secure payments (cards, bank transfers)
 - **Mobile Money** support (MTN, Vodafone, AirtelTigo)
 - **Remove.bg** for automatic background removal
-- **Fashn.ai** for AI-powered mannequin overlay
+- **Fashn.ai** for AI-powered model overlay
 - **Cloudinary** for image storage and optimization
 
 ## Quick Start
@@ -59,7 +59,7 @@ A modern, AI-powered thrift marketplace connecting buyers and sellers of second-
 - PostgreSQL database
 - Paystack account (for payments)
 - Remove.bg API key (for background removal)
-- Fashn.ai API key (for mannequin overlay)
+- Fashn.ai API key (for model overlay)
 
 ### Installation
 

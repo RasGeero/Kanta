@@ -2,8 +2,8 @@
 import fs from 'fs';
 import path from 'path';
 
-// Mannequin data with corresponding image files
-const mannequinsData = [
+// Model data with corresponding image files
+const modelsData = [
   {
     name: 'Elena - Professional Female Model',
     imageFile: 'attached_assets/stock_images/female_fashion_model_87f5c94a.jpg',
@@ -171,13 +171,13 @@ try {
   process.exit(1);
 }
 
-async function createMannequin(mannequinData) {
+async function createModel(modelData) {
   try {
     const FormData = (await import('form-data')).default;
     const formData = new FormData();
     
     // Add image file
-    const imagePath = path.resolve(mannequinData.imageFile);
+    const imagePath = path.resolve(modelData.imageFile);
     if (!fs.existsSync(imagePath)) {
       throw new Error(`Image file not found: ${imagePath}`);
     }
@@ -186,18 +186,18 @@ async function createMannequin(mannequinData) {
     formData.append('image', imageStream);
     
     // Add other fields
-    formData.append('name', mannequinData.name);
-    formData.append('gender', mannequinData.gender);
-    formData.append('bodyType', mannequinData.bodyType);
-    formData.append('ethnicity', mannequinData.ethnicity);
-    formData.append('ageRange', mannequinData.ageRange);
-    formData.append('pose', mannequinData.pose);
-    formData.append('category', mannequinData.category);
-    formData.append('height', mannequinData.height.toString());
-    formData.append('hasTransparentBackground', mannequinData.hasTransparentBackground.toString());
-    formData.append('isActive', mannequinData.isActive.toString());
-    formData.append('sortOrder', mannequinData.sortOrder.toString());
-    formData.append('tags', JSON.stringify(mannequinData.tags));
+    formData.append('name', modelData.name);
+    formData.append('gender', modelData.gender);
+    formData.append('bodyType', modelData.bodyType);
+    formData.append('ethnicity', modelData.ethnicity);
+    formData.append('ageRange', modelData.ageRange);
+    formData.append('pose', modelData.pose);
+    formData.append('category', modelData.category);
+    formData.append('height', modelData.height.toString());
+    formData.append('hasTransparentBackground', modelData.hasTransparentBackground.toString());
+    formData.append('isActive', modelData.isActive.toString());
+    formData.append('sortOrder', modelData.sortOrder.toString());
+    formData.append('tags', JSON.stringify(modelData.tags));
     
     const response = await fetch(`${API_BASE}/api/fashion-models`, {
       method: 'POST',
@@ -209,33 +209,33 @@ async function createMannequin(mannequinData) {
     
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Failed to create mannequin ${mannequinData.name}: ${response.status} ${errorText}`);
+      throw new Error(`Failed to create model ${modelData.name}: ${response.status} ${errorText}`);
     }
     
     const result = await response.json();
-    console.log(`✅ Created mannequin: ${mannequinData.name}`);
+    console.log(`✅ Created model: ${modelData.name}`);
     return result;
     
   } catch (error) {
-    console.error(`❌ Failed to create mannequin ${mannequinData.name}:`, error.message);
+    console.error(`❌ Failed to create model ${modelData.name}:`, error.message);
     throw error;
   }
 }
 
-async function seedMannequins() {
-  console.log('🌱 Starting mannequin seeding process...');
-  console.log(`📊 Planning to create ${mannequinsData.length} mannequins`);
+async function seedModels() {
+  console.log('🌱 Starting model seeding process...');
+  console.log(`📊 Planning to create ${modelsData.length} models`);
   
   let successCount = 0;
   let failureCount = 0;
   
-  for (const mannequinData of mannequinsData) {
+  for (const modelData of modelsData) {
     try {
-      await createMannequin(mannequinData);
+      await createModel(modelData);
       successCount++;
     } catch (error) {
       failureCount++;
-      console.error(`Failed to seed ${mannequinData.name}:`, error.message);
+      console.error(`Failed to seed ${modelData.name}:`, error.message);
     }
     
     // Add small delay between requests to avoid overwhelming the server
@@ -243,21 +243,21 @@ async function seedMannequins() {
   }
   
   console.log('\n📈 Seeding Summary:');
-  console.log(`✅ Successfully created: ${successCount} mannequins`);
-  console.log(`❌ Failed: ${failureCount} mannequins`);
-  console.log(`🎯 Total processed: ${successCount + failureCount} mannequins`);
+  console.log(`✅ Successfully created: ${successCount} models`);
+  console.log(`❌ Failed: ${failureCount} models`);
+  console.log(`🎯 Total processed: ${successCount + failureCount} models`);
   
   if (failureCount > 0) {
-    console.log('\n⚠️ Some mannequins failed to create. Check the errors above.');
+    console.log('\n⚠️ Some models failed to create. Check the errors above.');
     process.exit(1);
   } else {
-    console.log('\n🎉 All mannequins seeded successfully!');
+    console.log('\n🎉 All models seeded successfully!');
     process.exit(0);
   }
 }
 
 // Run the seeding
-seedMannequins().catch(error => {
+seedModels().catch(error => {
   console.error('❌ Seeding failed:', error);
   process.exit(1);
 });

@@ -29,7 +29,7 @@ export const products = pgTable("products", {
   condition: text("condition").notNull(), // excellent, good, fair
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   originalImage: text("original_image"), // Original uploaded image
-  processedImage: text("processed_image"), // AI-processed image with mannequin
+  processedImage: text("processed_image"), // AI-processed image with model
   selectedModelId: varchar("selected_model_id").references(() => fashionModels.id), // Selected fashion model for AI try-on
   aiPreviewUrl: text("ai_preview_url"), // URL for AI-generated preview with selected model
   images: json("images").$type<string[]>().notNull().default(sql`'[]'::json`), // Additional images
