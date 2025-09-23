@@ -1154,7 +1154,7 @@ export class DatabaseStorage implements IStorage {
   async trackFashionModelEvent(event: InsertFashionModelAnalytics): Promise<FashionModelAnalytics> {
     const [created] = await db
       .insert(fashionModelAnalytics)
-      .values(event)
+      .values([event])
       .returning();
     
     // Update interaction count when tracking view/select events
