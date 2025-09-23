@@ -1608,11 +1608,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Parse and validate the request body
       let validatedData;
       try {
-        // Create extended schema with image handling
+        // Custom boolean transformer for proper string-to-boolean conversion
+        const booleanTransformer = z.preprocess((val) => {
+          if (typeof val === 'boolean') return val;
+          if (typeof val === 'string') {
+            const lower = val.toLowerCase().trim();
+            if (lower === 'true' || lower === '1' || lower === 'on' || lower === 'yes') return true;
+            if (lower === 'false' || lower === '0' || lower === 'off' || lower === 'no') return false;
+            if (lower === '') return undefined; // Empty strings should remain undefined for optional fields
+          }
+          return val;
+        }, z.boolean().or(z.undefined()));
+
+        // Create extended schema with image handling and explicit boolean handling
         const createFashionModelSchema = insertFashionModelSchema.extend({
           height: z.coerce.number().int().positive().optional(),
           sortOrder: z.coerce.number().int().optional(),
-          isFeatured: z.coerce.boolean().optional(),
+          isFeatured: booleanTransformer.optional(),
+          hasTransparentBackground: booleanTransformer.optional(),
+          isActive: booleanTransformer.optional(),
           tags: z.union([
             z.array(z.string()),
             z.string().transform((str) => {
