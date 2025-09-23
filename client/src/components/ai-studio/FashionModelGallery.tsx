@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Heart, Search, Filter, Star, TrendingUp, Users, Crown, Grid, List, X, SlidersHorizontal, ArrowUpDown } from "lucide-react";
+import { Search, Filter, Users, Grid, List, X, SlidersHorizontal, ArrowUpDown } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { FashionModel } from "@/types/models";
@@ -232,11 +232,6 @@ export default function FashionModelGallery({
                 className="w-full h-full object-cover"
                 loading="lazy"
               />
-              {model.isFeatured && (
-                <Badge variant="secondary" className="absolute top-1 left-1 text-xs">
-                  <Crown className="h-3 w-3" />
-                </Badge>
-              )}
             </div>
 
             <div className="flex-1 min-w-0">
@@ -253,12 +248,6 @@ export default function FashionModelGallery({
                 </div>
 
                 <div className="flex flex-col items-end gap-1 ml-2">
-                  {(model.usage || 0) > 10 && (
-                    <Badge variant="outline" className="text-xs">
-                      <TrendingUp className="h-3 w-3 mr-1" />
-                      Popular
-                    </Badge>
-                  )}
                   {model.tags.length > 0 && (
                     <div className="text-xs text-muted-foreground">
                       {model.tags.length} tag{model.tags.length !== 1 ? 's' : ''}
@@ -267,18 +256,6 @@ export default function FashionModelGallery({
                 </div>
               </div>
 
-              {model.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {model.tags.slice(0, 3).map((tag) => (
-                    <Badge key={tag} variant="secondary" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
-                  {model.tags.length > 3 && (
-                    <span className="text-xs text-muted-foreground">+{model.tags.length - 3}</span>
-                  )}
-                </div>
-              )}
             </div>
           </div>
         </CardContent>
@@ -321,31 +298,6 @@ export default function FashionModelGallery({
               loading="lazy"
             />
 
-            {/* Overlay badges */}
-            <div className="absolute top-1 left-1 right-1 flex justify-between items-start">
-              {model.isFeatured && (
-                <Badge variant="secondary" className="text-xs">
-                  <Crown className="h-3 w-3 mr-1" />
-                  Featured
-                </Badge>
-              )}
-              {showRecommended && (
-                <Badge variant="default" className="text-xs ml-auto">
-                  <Star className="h-3 w-3 mr-1" />
-                  Best Match
-                </Badge>
-              )}
-            </div>
-
-            {/* Usage indicator */}
-            {(model.usage || 0) > 10 && (
-              <div className="absolute bottom-1 right-1">
-                <Badge variant="outline" className="text-xs">
-                  <TrendingUp className="h-3 w-3 mr-1" />
-                  Popular
-                </Badge>
-              </div>
-            )}
           </div>
 
           {/* Model info */}
@@ -356,18 +308,6 @@ export default function FashionModelGallery({
               {model.gender} • {model.category}
             </div>
 
-            {size !== "small" && model.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1">
-                {model.tags.slice(0, 2).map((tag) => (
-                  <Badge key={tag} variant="secondary" className="text-xs">
-                    {tag}
-                  </Badge>
-                ))}
-                {model.tags.length > 2 && (
-                  <span className="text-xs text-muted-foreground">+{model.tags.length - 2}</span>
-                )}
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>

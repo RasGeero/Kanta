@@ -21,7 +21,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { aiProcessing } from "@/services/ai-processing";
 import { productApi } from "@/services/api";
@@ -45,8 +44,6 @@ export default function AIStudio() {
   const [garmentImagePreview, setGarmentImagePreview] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<FashionModel | null>(null);
   const [category, setCategory] = useState<string>("");
-  const [isLongTop, setIsLongTop] = useState(false);
-  const [autoDetectGarmentType, setAutoDetectGarmentType] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiResult, setAiResult] = useState<AIStudioResult | null>(null);
   const [currentProductId, setCurrentProductId] = useState<string | null>(null);
@@ -419,28 +416,6 @@ export default function AIStudio() {
               </Select>
             </div>
 
-              {/* Options - Compact Layout */}
-              <div className="grid grid-cols-1 gap-2">
-                <div className="flex items-center justify-between p-2 rounded border bg-muted/10">
-                  <Label htmlFor="long-top" className="text-sm">Long Top</Label>
-                  <Switch 
-                    id="long-top" 
-                    checked={isLongTop} 
-                    onCheckedChange={setIsLongTop}
-                    data-testid="long-top-toggle"
-                  />
-                </div>
-                
-                <div className="flex items-center justify-between p-2 rounded border bg-muted/10">
-                  <Label htmlFor="auto-detect" className="text-sm">Auto Detect Garment Type</Label>
-                  <Switch 
-                    id="auto-detect" 
-                    checked={autoDetectGarmentType} 
-                    onCheckedChange={setAutoDetectGarmentType}
-                    data-testid="auto-detect-toggle"
-                  />
-                </div>
-              </div>
             </div>
           </div>
         </div>

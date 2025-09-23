@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { User, Sparkles, Star, Shuffle, Eye, X } from "lucide-react";
+import { User, Sparkles, Shuffle, Eye, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import FashionModelGallery from "./FashionModelGallery";
 import { FashionModel } from "@/types/models";
@@ -55,80 +54,52 @@ export default function FashionModelSelector({
                   className="w-full aspect-[2/3] object-cover rounded-lg"
                   data-testid="selected-model-image"
                 />
-                {selectedModel.isFeatured && (
-                  <div className="absolute top-2 left-2">
-                    <Badge variant="secondary" className="text-xs shadow-sm">
-                      <Star className="h-3 w-3 mr-1" />
-                      Featured
-                    </Badge>
+                {/* Model Name Overlay - Bottom Left */}
+                <div className="absolute bottom-2 left-2 right-2">
+                  <div className="bg-black/70 backdrop-blur-sm rounded px-2 py-1">
+                    <div className="text-white text-sm font-medium truncate">
+                      {selectedModel.name} - {selectedModel.gender} Model
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
             </div>
 
-            {/* Controls Below Image */}
-            <div className="space-y-4">
-              {/* Model Details */}
-              <div className="space-y-2">
-                <h4 className="font-medium">{selectedModel.name}</h4>
-                <div className="text-sm text-muted-foreground space-y-1">
-                  <div>{selectedModel.gender} • {selectedModel.category}</div>
-                  <div>{selectedModel.ethnicity} • {selectedModel.bodyType} build</div>
-                </div>
-                
-                {/* Tags */}
-                {selectedModel.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {selectedModel.tags.slice(0, 3).map((tag) => (
-                      <Badge key={tag} variant="outline" className="text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                    {selectedModel.tags.length > 3 && (
-                      <Badge variant="secondary" className="text-xs">
-                        +{selectedModel.tags.length - 3}
-                      </Badge>
-                    )}
-                  </div>
-                )}
-              </div>
+            {/* Action Buttons - Simplified */}
+            <div className="grid grid-cols-2 gap-2">
+              <Dialog open={isGalleryOpen} onOpenChange={setIsGalleryOpen}>
+                <DialogTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    data-testid="change-model"
+                  >
+                    <Eye className="h-4 w-4 mr-1" />
+                    Change
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[90vh]">
+                  <DialogHeader>
+                    <DialogTitle>Choose Fashion Model</DialogTitle>
+                  </DialogHeader>
+                  <FashionModelGallery
+                    selectedModel={selectedModel}
+                    onModelSelect={handleModelSelect}
+                    garmentCategory={garmentCategory}
+                    preferredGender={preferredGender}
+                  />
+                </DialogContent>
+              </Dialog>
               
-              {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-2">
-                <Dialog open={isGalleryOpen} onOpenChange={setIsGalleryOpen}>
-                  <DialogTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      data-testid="change-model"
-                    >
-                      <Eye className="h-4 w-4 mr-1" />
-                      Change
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-4xl max-h-[90vh]">
-                    <DialogHeader>
-                      <DialogTitle>Choose Fashion Model</DialogTitle>
-                    </DialogHeader>
-                    <FashionModelGallery
-                      selectedModel={selectedModel}
-                      onModelSelect={handleModelSelect}
-                      garmentCategory={garmentCategory}
-                      preferredGender={preferredGender}
-                    />
-                  </DialogContent>
-                </Dialog>
-                
-                <Button 
-                  variant="secondary" 
-                  size="sm"
-                  onClick={handleClearSelection}
-                  data-testid="clear-model"
-                >
-                  <X className="h-4 w-4 mr-1" />
-                  Clear
-                </Button>
-              </div>
+              <Button 
+                variant="secondary" 
+                size="sm"
+                onClick={handleClearSelection}
+                data-testid="clear-model"
+              >
+                <X className="h-4 w-4 mr-1" />
+                Clear
+              </Button>
             </div>
           </div>
         ) : (
