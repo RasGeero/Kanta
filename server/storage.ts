@@ -34,6 +34,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, ilike, gte, lte, desc, asc, count, avg, sql } from "drizzle-orm";
+import bcrypt from "bcryptjs";
 
 // Extended cart types for storage
 export type CartItemWithProduct = CartItem & {
@@ -143,26 +144,43 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   // Initialize the database with seed data if empty
   async initializeSeedDataIfEmpty(): Promise<void> {
-    const userCount = await db.select({ count: count() }).from(users);
+    console.log("=== Starting database initialization ===");
     
-    // Also check if admin user exists with correct password hash
-    const adminUser = await db.select().from(users).where(eq(users.email, "admin@kantamanto.com")).limit(1);
-    const needsReinit = userCount[0].count === 0 || 
-                       adminUser.length === 0 || 
-                       adminUser[0].password !== "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBdXig/goZ5HVe";
-    
-    if (needsReinit) {
-      // Clear existing users if they exist but have wrong password
-      if (userCount[0].count > 0) {
-        await db.delete(users);
-        console.log("Cleared existing users for reinitialization");
+    try {
+      const userCount = await db.select({ count: count() }).from(users);
+      console.log("User count:", userCount[0].count);
+      
+      // Also check if admin user exists with correct password hash
+      const adminUser = await db.select().from(users).where(eq(users.email, "admin@kantamanto.com")).limit(1);
+      console.log("Admin user found:", adminUser.length > 0);
+      
+      const needsReinit = userCount[0].count === 0 || adminUser.length === 0;
+      const needsAdminPasswordUpdate = adminUser.length > 0 && adminUser[0].password !== "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBdXig/goZ5HVe";
+      
+      console.log("Needs reinitialization:", needsReinit);
+      console.log("Needs admin password update:", needsAdminPasswordUpdate);
+      
+      // If admin exists but has wrong password, just update the password
+      if (needsAdminPasswordUpdate) {
+        const adminHash = await bcrypt.hash('admin123', 12);
+        console.log("Updating admin password with fresh hash");
+        await db.update(users)
+          .set({ password: adminHash })
+          .where(eq(users.email, "admin@kantamanto.com"));
+        console.log("Admin password updated successfully");
+        return;
       }
-      // Insert seed data
+      
+      if (needsReinit) {
+      // Insert seed data - Generate fresh hash for admin user
+      const adminHash = await bcrypt.hash('admin123', 12);
+      console.log("Generated fresh admin hash:", adminHash);
+      
       const seedUsers = [
         {
           username: "admin",
           email: "admin@kantamanto.com",
-          password: "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBdXig/goZ5HVe", // admin123
+          password: adminHash, // Fresh hash for admin123
           firstName: "Admin",
           lastName: "User",
           phone: "+233123456789",
@@ -388,6 +406,11 @@ export class DatabaseStorage implements IStorage {
       ];
 
       await db.insert(fashionModels).values(seedFashionModels);
+      console.log("=== Database initialization completed successfully ===");
+    }
+    } catch (error) {
+      console.error("Error during database initialization:", error);
+      throw error;
     }
   }
 
