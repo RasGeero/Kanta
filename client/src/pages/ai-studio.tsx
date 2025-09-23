@@ -321,73 +321,74 @@ export default function AIStudio() {
         </div>
       </div>
 
-      {/* Three Panel Layout - Optimized for Mobile and Desktop */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Three Panel Layout - Improved Design */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {/* Panel 1: Select Garment */}
-        <Card className="h-fit">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <ImageIcon className="h-5 w-5" />
-              <span>Select Garment</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Upload Garment Image */}
+        <div className="space-y-4">
+          {/* Panel Title */}
+          <div className="flex items-center space-x-2">
+            <ImageIcon className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">Select Garment</h3>
+          </div>
+          
+          <div className="space-y-6">
+            {/* Borderless Thumbnail Display */}
             <div>
-              <Label>Upload Garment Image</Label>
-              <div className="mt-2 border-2 border-dashed border-border rounded-lg p-4 text-center">
-                {garmentImagePreview ? (
-                  <div className="space-y-4">
-                    <div className="w-full max-w-[280px] mx-auto">
-                      <img 
-                        src={garmentImagePreview} 
-                        alt="Garment preview" 
-                        className="w-full aspect-[9/16] object-cover rounded-lg shadow-md"
+              {garmentImagePreview ? (
+                <div className="space-y-4">
+                  <div className="w-full">
+                    <img 
+                      src={garmentImagePreview} 
+                      alt="Garment preview" 
+                      className="w-full aspect-[2/3] object-cover rounded-lg"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full">
+                  <div className="w-full aspect-[2/3] border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center bg-muted/10">
+                    <Upload className="h-12 w-12 text-muted-foreground mb-4" />
+                    <div className="space-y-2 px-4 text-center">
+                      <p className="text-sm text-muted-foreground">
+                        Upload garment image
+                      </p>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleGarmentUpload(file);
+                        }}
+                        className="hidden"
+                        id="garment-upload"
+                        data-testid="garment-upload"
                       />
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setGarmentImage(null);
-                        setGarmentImagePreview(null);
-                      }}
-                    >
-                      Remove Image
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="w-full max-w-[280px] mx-auto">
-                    <div className="w-full aspect-[9/16] border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center bg-muted/20">
-                      <Upload className="h-12 w-12 text-muted-foreground mb-4" />
-                      <div className="space-y-2 px-4">
-                        <p className="text-sm text-muted-foreground">
-                          Upload a clear photo of your garment
-                        </p>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleGarmentUpload(file);
-                          }}
-                          className="hidden"
-                          id="garment-upload"
-                          data-testid="garment-upload"
-                        />
-                        <label htmlFor="garment-upload">
-                          <Button type="button" variant="outline" asChild>
-                            <span>Choose Image</span>
-                          </Button>
-                        </label>
-                      </div>
+                      <label htmlFor="garment-upload">
+                        <Button type="button" variant="outline" size="sm" asChild>
+                          <span>Choose Image</span>
+                        </Button>
+                      </label>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
-            {/* Controls - Optimized Layout */}
+            {/* Controls Below Image */}
+            {garmentImagePreview && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setGarmentImage(null);
+                  setGarmentImagePreview(null);
+                }}
+                className="w-full"
+              >
+                Remove Image
+              </Button>
+            )}
+            
             <div className="space-y-4">
               <div>
                 <Label className="text-sm font-medium">Category</Label>
@@ -419,8 +420,8 @@ export default function AIStudio() {
             </div>
 
               {/* Options - Compact Layout */}
-              <div className="grid grid-cols-1 gap-3">
-                <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/20">
+              <div className="grid grid-cols-1 gap-2">
+                <div className="flex items-center justify-between p-2 rounded border bg-muted/10">
                   <Label htmlFor="long-top" className="text-sm">Long Top</Label>
                   <Switch 
                     id="long-top" 
@@ -430,7 +431,7 @@ export default function AIStudio() {
                   />
                 </div>
                 
-                <div className="flex items-center justify-between p-3 rounded-lg border bg-muted/20">
+                <div className="flex items-center justify-between p-2 rounded border bg-muted/10">
                   <Label htmlFor="auto-detect" className="text-sm">Auto Detect Garment Type</Label>
                   <Switch 
                     id="auto-detect" 
@@ -441,8 +442,8 @@ export default function AIStudio() {
                 </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Panel 2: Select Fashion Model */}
         <FashionModelSelector
@@ -453,67 +454,49 @@ export default function AIStudio() {
         />
 
         {/* Panel 3: Result */}
-        <Card className="h-fit">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Sparkles className="h-5 w-5" />
-              <span>Result</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
+        <div className="space-y-4">
+          {/* Panel Title */}
+          <div className="flex items-center space-x-2">
+            <Sparkles className="h-5 w-5 text-muted-foreground" />
+            <h3 className="text-lg font-semibold">Result</h3>
+          </div>
+          
+          <div className="space-y-6">
             {!aiResult && !isGenerating && (
-              <div className="text-center py-8">
-                <Sparkles className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground mb-4">
-                  Your AI-generated try-on result will appear here
+              <div className="w-full aspect-[2/3] border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center bg-muted/10">
+                <Sparkles className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground mb-4 text-center px-4">
+                  AI result will appear here
                 </p>
-                
-                {/* Generate Button */}
-                <Button
-                  onClick={handleGenerateAI}
-                  disabled={!garmentImage || !category || isGenerating}
-                  className="w-full"
-                  size="lg"
-                  data-testid="generate-try-on"
-                >
-                  {isGenerating ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Generate Try-On
-                    </>
-                  )}
-                </Button>
               </div>
             )}
 
             {isGenerating && (
-              <div className="text-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-                <p className="text-muted-foreground">
-                  AI is generating your try-on result...
+              <div className="w-full aspect-[2/3] border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center bg-muted/10">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mb-4"></div>
+                <p className="text-muted-foreground text-center px-4">
+                  Generating result...
                 </p>
               </div>
             )}
 
             {aiResult && (
               <div className="space-y-4">
-                {/* Generated Image - Enhanced 9:16 Display */}
-                <div className="w-full max-w-[320px] mx-auto">
-                  <div className="border rounded-lg overflow-hidden shadow-lg">
-                    <img 
-                      src={aiResult.generatedImage} 
-                      alt="AI try-on result" 
-                      className="w-full aspect-[9/16] object-cover"
-                      data-testid="ai-result-image"
-                    />
-                  </div>
+                {/* Borderless Thumbnail Display */}
+                <div className="w-full">
+                  <img 
+                    src={aiResult.generatedImage} 
+                    alt="AI try-on result" 
+                    className="w-full aspect-[2/3] object-cover rounded-lg"
+                    data-testid="ai-result-image"
+                  />
                 </div>
-
+              </div>
+            )}
+            
+            {/* Controls Below Image */}
+            {aiResult && (
+              <div className="space-y-4">
                 {/* Product Info */}
                 <div className="space-y-2">
                   <h4 className="font-semibold">{aiResult.productTitle}</h4>
@@ -525,13 +508,13 @@ export default function AIStudio() {
                   </p>
                 </div>
 
-                {/* Action Buttons - Enhanced Layout */}
-                <div className="space-y-3">
+                {/* Action Buttons */}
+                <div className="space-y-2">
                   <div className="grid grid-cols-2 gap-2">
                     <Button 
                       onClick={handleDownloadResult}
                       variant="outline" 
-                      className="flex-1"
+                      size="sm"
                       data-testid="download-result"
                     >
                       <Download className="h-4 w-4 mr-1" />
@@ -541,7 +524,7 @@ export default function AIStudio() {
                     <Button 
                       onClick={handleRunAgain}
                       variant="secondary" 
-                      className="flex-1"
+                      size="sm"
                       data-testid="run-again"
                     >
                       <RotateCcw className="h-4 w-4 mr-1" />
@@ -552,17 +535,30 @@ export default function AIStudio() {
                   <Button 
                     onClick={handleSaveToDraft}
                     className="w-full"
-                    size="lg"
                     data-testid="save-to-draft"
                   >
                     <Save className="h-4 w-4 mr-2" />
-                    Complete Product Details
+                    Complete Details
                   </Button>
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+            
+            {/* Generate Button - Below placeholder */}
+            {!aiResult && !isGenerating && (
+              <Button
+                onClick={handleGenerateAI}
+                disabled={!garmentImage || !category || isGenerating}
+                className="w-full"
+                size="lg"
+                data-testid="generate-try-on"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Generate Try-On
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

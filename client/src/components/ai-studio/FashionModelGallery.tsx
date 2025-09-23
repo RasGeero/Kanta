@@ -183,7 +183,7 @@ export default function FashionModelGallery({
           <Crown className="h-4 w-4 text-yellow-500" />
           Featured Models
         </h3>
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {featuredModels.map((model: FashionModel) => (
             <ModelCard key={model.id} model={model} size="small" />
           ))}
@@ -225,7 +225,7 @@ export default function FashionModelGallery({
       >
         <CardContent className="p-3">
           <div className="flex items-center gap-3">
-            <div className="w-16 h-20 relative overflow-hidden rounded-lg flex-shrink-0">
+            <div className="w-16 h-24 relative overflow-hidden rounded-lg flex-shrink-0">
               <img
                 src={model.thumbnailUrl || model.imageUrl}
                 alt={model.name}
@@ -297,9 +297,9 @@ export default function FashionModelGallery({
   }) => {
     const isSelected = selectedModel?.id === model.id;
     const sizeClasses = {
-      small: "aspect-[3/4] h-24",
-      medium: "aspect-[3/4] h-32", 
-      large: "aspect-[3/4] h-40"
+      small: "aspect-[2/3] h-24",
+      medium: "aspect-[2/3] h-32", 
+      large: "aspect-[2/3] h-40"
     };
 
     return (
@@ -536,10 +536,10 @@ export default function FashionModelGallery({
       <ScrollArea className="h-96">
         <div className="space-y-4">
           {isLoading ? (
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="space-y-2">
-                  <Skeleton className="aspect-[3/4] h-32" />
+                  <Skeleton className="aspect-[2/3] h-32" />
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-3 w-1/2" />
                 </div>
@@ -569,7 +569,7 @@ export default function FashionModelGallery({
                     )}
                   </div>
                 ) : viewMode === "gallery" ? (
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {filteredAndSortedModels.map((model: FashionModel) => (
                       <ModelCard key={model.id} model={model} size="medium" />
                     ))}
