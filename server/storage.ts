@@ -144,7 +144,19 @@ export class DatabaseStorage implements IStorage {
   // Initialize the database with seed data if empty
   async initializeSeedDataIfEmpty(): Promise<void> {
     const userCount = await db.select({ count: count() }).from(users);
-    if (userCount[0].count === 0) {
+    
+    // Also check if admin user exists with correct password hash
+    const adminUser = await db.select().from(users).where(eq(users.email, "admin@kantamanto.com")).limit(1);
+    const needsReinit = userCount[0].count === 0 || 
+                       adminUser.length === 0 || 
+                       adminUser[0].password !== "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBdXig/goZ5HVe";
+    
+    if (needsReinit) {
+      // Clear existing users if they exist but have wrong password
+      if (userCount[0].count > 0) {
+        await db.delete(users);
+        console.log("Cleared existing users for reinitialization");
+      }
       // Insert seed data
       const seedUsers = [
         {
