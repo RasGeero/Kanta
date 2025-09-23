@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Filter, Users, Grid, List, X, SlidersHorizontal, ArrowUpDown } from "lucide-react";
+import { Search, Filter, Star, Users, Crown, Grid, List, X, SlidersHorizontal, ArrowUpDown } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { FashionModel } from "@/types/models";
