@@ -274,9 +274,9 @@ export default function FashionModelGallery({
   }) => {
     const isSelected = selectedModel?.id === model.id;
     const sizeClasses = {
-      small: "aspect-[3/4] h-32",
-      medium: "aspect-[3/4] h-40", 
-      large: "aspect-[3/4] h-48"
+      small: "aspect-[9/16] h-36",
+      medium: "aspect-[9/16] h-48", 
+      large: "aspect-[9/16] h-56"
     };
 
     return (
@@ -487,7 +487,7 @@ export default function FashionModelGallery({
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="space-y-3">
-                  <Skeleton className="aspect-[3/4] h-40" />
+                  <Skeleton className="aspect-[9/16] h-48" />
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-3 w-1/2" />
                 </div>
