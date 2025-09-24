@@ -1412,26 +1412,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
             : fallbackMaleUrl;
         }
 
-        // Step 1: Submit job to Fashn.ai
+        // Step 1: Submit job to Fashn.ai with enhanced debugging
+        const apiKey = process.env.FASHN_AI_API_KEY;
+        
+        // Debug API key configuration (safely)
+        console.log('[DEBUG] Fashn.ai API Key debug - Length:', apiKey ? apiKey.length : 0);
+        console.log('[DEBUG] Fashn.ai API Key debug - Starts with:', apiKey ? apiKey.substring(0, 10) + '...' : 'undefined');
+        console.log('[DEBUG] Fashn.ai API Key debug - Type:', typeof apiKey);
+        
+        const requestBody = {
+          model_name: "tryon-v1.6",
+          inputs: {
+            model_image: modelImageUrl,
+            garment_image: imageUrl,
+            category: garmentType || "other"
+          }
+        };
+        
+        console.log('[DEBUG] Fashn.ai request body:', JSON.stringify(requestBody, null, 2));
+        console.log('[DEBUG] Model image URL length:', modelImageUrl?.length || 0);
+        console.log('[DEBUG] Garment image URL length:', imageUrl?.length || 0);
+        
         const runResponse = await fetch('https://api.fashn.ai/v1/run', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${process.env.FASHN_AI_API_KEY}`,
+            'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({
-            model_name: "tryon-v1.6",
-            inputs: {
-              model_image: modelImageUrl,
-              garment_image: imageUrl,
-              category: garmentType || "other"
-            }
-          }),
+          body: JSON.stringify(requestBody),
         });
+        
+        console.log('[DEBUG] Fashn.ai response status:', runResponse.status);
+        console.log('[DEBUG] Fashn.ai response headers:', Object.fromEntries(runResponse.headers.entries()));
 
         if (!runResponse.ok) {
-          const errorText = await runResponse.text();
-          console.error('Fashn.ai run API error:', errorText);
+          let errorText;
+          try {
+            errorText = await runResponse.text();
+            console.error('[DEBUG] Fashn.ai run API error (raw):', errorText);
+            
+            // Try to parse as JSON for better error details
+            try {
+              const errorJson = JSON.parse(errorText);
+              console.error('[DEBUG] Fashn.ai run API error (parsed):', errorJson);
+            } catch {
+              console.error('[DEBUG] Error response is not JSON');
+            }
+          } catch (readError) {
+            console.error('[DEBUG] Failed to read error response:', readError);
+            errorText = 'Failed to read error response';
+          }
           throw new Error(`Fashn.ai API request failed: ${runResponse.status}`);
         }
 
@@ -2121,26 +2151,56 @@ async function processVirtualTryOn(
     // Convert data URL to proper URL using Cloudinary
     const garmentImageUrl = await handleDataUrlToCloudinary(imageUrl, 'garment');
 
-    // Step 1: Submit job to Fashn.ai
+    // Step 1: Submit job to Fashn.ai with enhanced debugging
+    const apiKey = process.env.FASHN_AI_API_KEY;
+    
+    // Debug API key configuration (safely)
+    console.log('Fashn.ai API Key debug - Length:', apiKey ? apiKey.length : 0);
+    console.log('Fashn.ai API Key debug - Starts with:', apiKey ? apiKey.substring(0, 10) + '...' : 'undefined');
+    console.log('Fashn.ai API Key debug - Type:', typeof apiKey);
+    
+    const requestBody = {
+      model_name: "tryon-v1.6",
+      inputs: {
+        model_image: modelImageUrl,
+        garment_image: garmentImageUrl,
+        category: mapGarmentTypeToFashnCategory(garmentType || "other")
+      }
+    };
+    
+    console.log('Fashn.ai request body:', JSON.stringify(requestBody, null, 2));
+    console.log('Model image URL length:', modelImageUrl?.length || 0);
+    console.log('Garment image URL length:', garmentImageUrl?.length || 0);
+    
     const runResponse = await fetch('https://api.fashn.ai/v1/run', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.FASHN_AI_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        model_name: "tryon-v1.6",
-        inputs: {
-          model_image: modelImageUrl,
-          garment_image: garmentImageUrl,
-          category: mapGarmentTypeToFashnCategory(garmentType || "other")
-        }
-      }),
+      body: JSON.stringify(requestBody),
     });
+    
+    console.log('Fashn.ai response status:', runResponse.status);
+    console.log('Fashn.ai response headers:', Object.fromEntries(runResponse.headers.entries()));
 
     if (!runResponse.ok) {
-      const errorText = await runResponse.text();
-      console.error('Fashn.ai run API error:', errorText);
+      let errorText;
+      try {
+        errorText = await runResponse.text();
+        console.error('Fashn.ai run API error (raw):', errorText);
+        
+        // Try to parse as JSON for better error details
+        try {
+          const errorJson = JSON.parse(errorText);
+          console.error('Fashn.ai run API error (parsed):', errorJson);
+        } catch {
+          console.error('Error response is not JSON');
+        }
+      } catch (readError) {
+        console.error('Failed to read error response:', readError);
+        errorText = 'Failed to read error response';
+      }
       throw new Error(`Fashn.ai API request failed: ${runResponse.status}`);
     }
 
