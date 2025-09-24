@@ -20,14 +20,16 @@ import path from "path";
 import bcrypt from "bcryptjs";
 // Conditionally import and configure Cloudinary
 let cloudinary: any = null;
+let cloudinaryLoadingPromise: Promise<void> | null = null;
+
 if (process.env.CLOUDINARY_URL) {
-  try {
-    const { v2 } = require('cloudinary');
-    cloudinary = v2;
+  cloudinaryLoadingPromise = import('cloudinary').then(cloudinaryModule => {
+    cloudinary = cloudinaryModule.v2;
     console.log('✅ Cloudinary configured successfully');
-  } catch (error: any) {
+  }).catch(error => {
     console.warn('⚠️  Failed to load Cloudinary:', error.message);
-  }
+    throw error;
+  });
 } else {
   console.warn('⚠️  CLOUDINARY_URL not set - image uploads will be disabled');
 }
@@ -53,6 +55,11 @@ async function uploadToCloudinary(buffer: Buffer, options: {
   public_id?: string;
   format?: string;
 } = {}): Promise<string> {
+  // Wait for Cloudinary to load if it's still loading
+  if (cloudinaryLoadingPromise) {
+    await cloudinaryLoadingPromise;
+  }
+  
   if (!cloudinary) {
     throw new Error('Cloudinary not configured - cannot upload images');
   }
@@ -1320,6 +1327,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Implement actual Fashn.ai API call
       console.log('Model overlay requested:', { imageUrl, garmentType, modelGender });
       const processingStartTime = Date.now();
+      let selectedModel = null; // Declare at function scope for error handling
 
       try {
         // Get appropriate fashion model from database using smart selection
@@ -1331,7 +1339,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
                             ['men', 'male'].includes(g) ? 'men' : 'unisex';
 
         let modelImageUrl;
-        let selectedModel = null;
 
         if (fashionModel && fashionModel.id) {
           // Use the provided fashion model from the client
