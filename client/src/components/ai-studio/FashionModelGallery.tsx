@@ -274,9 +274,9 @@ export default function FashionModelGallery({
   }) => {
     const isSelected = selectedModel?.id === model.id;
     const sizeClasses = {
-      small: "aspect-[2/3] h-24",
-      medium: "aspect-[2/3] h-32", 
-      large: "aspect-[2/3] h-40"
+      small: "aspect-[3/4] h-32",
+      medium: "aspect-[3/4] h-40", 
+      large: "aspect-[3/4] h-48"
     };
 
     return (
@@ -284,7 +284,7 @@ export default function FashionModelGallery({
         className={`cursor-pointer transition-all duration-200 ${
           isSelected 
             ? 'ring-2 ring-primary ring-offset-2 shadow-lg' 
-            : 'hover:shadow-md hover:scale-105'
+            : 'hover:shadow-md hover:scale-[1.02]'
         }`}
         onClick={() => onModelSelect(model)}
         data-testid={`fashion-model-${model.id}`}
@@ -297,17 +297,25 @@ export default function FashionModelGallery({
               className="w-full h-full object-cover"
               loading="lazy"
             />
-
+            {showRecommended && (
+              <div className="absolute top-2 right-2">
+                <Badge variant="secondary" className="text-xs">
+                  Recommended
+                </Badge>
+              </div>
+            )}
           </div>
 
           {/* Model info */}
-          <div className="p-2">
-            <div className="text-xs font-medium truncate">{model.name}</div>
+          <div className="p-3">
+            <div className="text-sm font-medium truncate mb-1">{model.name}</div>
             <div className="text-xs text-muted-foreground flex items-center gap-1">
               <Users className="h-3 w-3" />
               {model.gender} • {model.category}
             </div>
-
+            <div className="text-xs text-muted-foreground mt-1 truncate">
+              {model.ethnicity}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -476,10 +484,10 @@ export default function FashionModelGallery({
       <ScrollArea className="h-96">
         <div className="space-y-4">
           {isLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="space-y-2">
-                  <Skeleton className="aspect-[2/3] h-32" />
+                <div key={i} className="space-y-3">
+                  <Skeleton className="aspect-[3/4] h-40" />
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-3 w-1/2" />
                 </div>
