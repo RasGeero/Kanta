@@ -111,6 +111,31 @@ async function handleDataUrlToCloudinary(dataUrl: string, publicIdPrefix: string
   });
 }
 
+// Helper function to map garment types to Fashn.ai categories
+function mapGarmentTypeToFashnCategory(garmentType: string): 'tops' | 'bottoms' | 'one-pieces' | 'auto' {
+  const type = garmentType.toLowerCase();
+  
+  // Map various garment types to Fashn.ai categories
+  if (type.includes('shirt') || type.includes('top') || type.includes('blouse') || 
+      type.includes('tshirt') || type.includes('t-shirt') || type.includes('sweater') ||
+      type.includes('hoodie') || type.includes('jacket') || type.includes('coat')) {
+    return 'tops';
+  }
+  
+  if (type.includes('pants') || type.includes('trouser') || type.includes('jeans') ||
+      type.includes('shorts') || type.includes('skirt') || type.includes('leggings')) {
+    return 'bottoms';
+  }
+  
+  if (type.includes('dress') || type.includes('jumpsuit') || type.includes('romper') ||
+      type.includes('onepiece') || type.includes('one-piece')) {
+    return 'one-pieces';
+  }
+  
+  // Default to auto for unknown categories
+  return 'auto';
+}
+
 // Configure multer for file uploads
 const upload = multer({ 
   storage: multer.memoryStorage(),
@@ -594,6 +619,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const product = await storage.createProduct({
         ...productData,
+        sellerId: req.session.userId!, // Use authenticated user's ID from session
         originalImage: originalImageUrl,
         processedImage: processedImageUrl,
       });
@@ -2107,7 +2133,7 @@ async function processVirtualTryOn(
         inputs: {
           model_image: modelImageUrl,
           garment_image: garmentImageUrl,
-          category: garmentType || "other"
+          category: mapGarmentTypeToFashnCategory(garmentType || "other")
         }
       }),
     });
