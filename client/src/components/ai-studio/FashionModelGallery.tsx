@@ -308,14 +308,7 @@ export default function FashionModelGallery({
 
           {/* Model info */}
           <div className="p-3">
-            <div className="text-sm font-medium truncate mb-1">{model.name}</div>
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <Users className="h-3 w-3" />
-              {model.gender} • {model.category}
-            </div>
-            <div className="text-xs text-muted-foreground mt-1 truncate">
-              {model.ethnicity}
-            </div>
+            <div className="text-sm font-medium truncate">{model.name}</div>
           </div>
         </CardContent>
       </Card>
