@@ -18,10 +18,21 @@ import sharp from "sharp";
 import fs from "fs/promises";
 import path from "path";
 import bcrypt from "bcryptjs";
-import { v2 as cloudinary } from 'cloudinary';
+// Conditionally import and configure Cloudinary
+let cloudinary: any = null;
+if (process.env.CLOUDINARY_URL) {
+  try {
+    const { v2 } = require('cloudinary');
+    cloudinary = v2;
+    console.log('✅ Cloudinary configured successfully');
+  } catch (error: any) {
+    console.warn('⚠️  Failed to load Cloudinary:', error.message);
+  }
+} else {
+  console.warn('⚠️  CLOUDINARY_URL not set - image uploads will be disabled');
+}
 
-// Configure Cloudinary - the library auto-reads CLOUDINARY_URL from env
-// Verify required environment variables at startup
+// Verify other environment variables at startup
 const requiredEnvVars = {
   CLOUDINARY_URL: process.env.CLOUDINARY_URL,
   REMOVE_BG_API_KEY: process.env.REMOVE_BG_API_KEY,
@@ -42,6 +53,10 @@ async function uploadToCloudinary(buffer: Buffer, options: {
   public_id?: string;
   format?: string;
 } = {}): Promise<string> {
+  if (!cloudinary) {
+    throw new Error('Cloudinary not configured - cannot upload images');
+  }
+  
   return new Promise((resolve, reject) => {
     const uploadOptions = {
       resource_type: 'image' as const,
@@ -53,7 +68,7 @@ async function uploadToCloudinary(buffer: Buffer, options: {
 
     cloudinary.uploader.upload_stream(
       uploadOptions,
-      (error, result) => {
+      (error: any, result: any) => {
         if (error) {
           console.error('Cloudinary upload error:', error);
           reject(error);

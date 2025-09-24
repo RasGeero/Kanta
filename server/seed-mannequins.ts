@@ -1,7 +1,16 @@
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { v2 as cloudinary } from 'cloudinary';
+// Conditionally import Cloudinary
+let cloudinary: any = null;
+if (process.env.CLOUDINARY_URL) {
+  try {
+    const { v2 } = require('cloudinary');
+    cloudinary = v2;
+  } catch (error: any) {
+    console.warn('⚠️ Failed to load Cloudinary:', error.message);
+  }
+}
 import { storage } from './storage.js';
 import type { InsertFashionModel } from '@shared/schema';
 
@@ -11,6 +20,10 @@ async function uploadToCloudinary(buffer: Buffer, options: {
   public_id?: string;
   format?: string;
 } = {}): Promise<string> {
+  if (!cloudinary) {
+    throw new Error('Cloudinary not configured - cannot upload images');
+  }
+  
   return new Promise((resolve, reject) => {
     const uploadOptions = {
       resource_type: 'image' as const,
@@ -22,7 +35,7 @@ async function uploadToCloudinary(buffer: Buffer, options: {
 
     cloudinary.uploader.upload_stream(
       uploadOptions,
-      (error, result) => {
+      (error: any, result: any) => {
         if (error) {
           console.error('Cloudinary upload error:', error);
           reject(error);
