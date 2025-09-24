@@ -1442,8 +1442,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const processingTime = processingEndTime - processingStartTime;
 
         // Track success metrics
-        if (selectedFashionModel) {
-          await storage.updateFashionModelMetrics(selectedFashionModel.id, true, processingTime);
+        if (selectedModel) {
+          await storage.updateFashionModelMetrics(selectedModel.id, true, processingTime);
         }
 
         return res.json({
@@ -1456,10 +1456,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.error('Fashn.ai processing error:', error);
 
         // Track failure metrics
-        if (selectedFashionModel) {
+        if (selectedModel) {
           const processingEndTime = Date.now();
           const processingTime = processingEndTime - processingStartTime;
-          await storage.updateFashionModelMetrics(selectedFashionModel.id, false, processingTime);
+          await storage.updateFashionModelMetrics(selectedModel.id, false, processingTime);
         }
 
         // Fallback to background-removed image
