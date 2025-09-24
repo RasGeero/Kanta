@@ -183,7 +183,7 @@ export default function FashionModelGallery({
           <Crown className="h-4 w-4 text-yellow-500" />
           Featured Models
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-2 justify-items-center">
           {featuredModels.map((model: FashionModel) => (
             <ModelCard key={model.id} model={model} size="small" />
           ))}
@@ -201,7 +201,7 @@ export default function FashionModelGallery({
           <Star className="h-4 w-4 text-blue-500" />
           Recommended for You
         </h3>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-2 justify-items-center">
           {recommendedModels.slice(0, 4).map((model: FashionModel) => (
             <ModelCard key={model.id} model={model} size="medium" showRecommended />
           ))}
@@ -274,9 +274,9 @@ export default function FashionModelGallery({
   }) => {
     const isSelected = selectedModel?.id === model.id;
     const sizeClasses = {
-      small: "aspect-[3/4] h-32",
-      medium: "aspect-[3/4] h-40", 
-      large: "aspect-[3/4] h-48"
+      small: "aspect-[3/4] w-full max-w-[140px]",
+      medium: "aspect-[3/4] w-full max-w-[180px]", 
+      large: "aspect-[3/4] w-full max-w-[220px]"
     };
 
     return (
@@ -484,10 +484,10 @@ export default function FashionModelGallery({
       <ScrollArea className="h-96">
         <div className="space-y-4">
           {isLoading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3 justify-items-center">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="space-y-3">
-                  <Skeleton className="aspect-[3/4] h-40" />
+                <div key={i} className="space-y-3 w-full max-w-[180px]">
+                  <Skeleton className="aspect-[3/4] w-full" />
                   <Skeleton className="h-4 w-3/4" />
                   <Skeleton className="h-3 w-1/2" />
                 </div>
@@ -517,7 +517,7 @@ export default function FashionModelGallery({
                     )}
                   </div>
                 ) : viewMode === "gallery" ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-3 justify-items-center">
                     {filteredAndSortedModels.map((model: FashionModel) => (
                       <ModelCard key={model.id} model={model} size="medium" />
                     ))}
