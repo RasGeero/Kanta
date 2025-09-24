@@ -2175,12 +2175,20 @@ async function processVirtualTryOn(
 
       const statusResult = await statusResponse.json();
       console.log(`Fashn.ai status check ${attempts}:`, statusResult.status);
+      
+      // Log the full response for debugging
+      if (statusResult.status === 'failed') {
+        console.error('Fashn.ai failed response:', JSON.stringify(statusResult, null, 2));
+      }
 
       if (statusResult.status === 'completed' && statusResult.output && statusResult.output.length > 0) {
         finalResult = statusResult;
         break;
       } else if (statusResult.status === 'failed') {
-        throw new Error(statusResult.error || 'Fashn.ai processing failed');
+        const errorMessage = typeof statusResult.error === 'string' 
+          ? statusResult.error 
+          : JSON.stringify(statusResult.error) || 'Fashn.ai processing failed';
+        throw new Error(errorMessage);
       }
     }
 
