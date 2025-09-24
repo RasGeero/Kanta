@@ -150,42 +150,37 @@ export class DatabaseStorage implements IStorage {
       const userCount = await db.select({ count: count() }).from(users);
       console.log("User count:", userCount[0].count);
       
-      // Also check if admin user exists with correct password hash
-      const adminUser = await db.select().from(users).where(eq(users.email, "admin@kantamanto.com")).limit(1);
-      console.log("Admin user found:", adminUser.length > 0);
-      
-      const needsReinit = userCount[0].count === 0 || adminUser.length === 0;
-      const needsAdminPasswordUpdate = adminUser.length > 0 && adminUser[0].password !== "$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBdXig/goZ5HVe";
-      
+      const needsReinit = userCount[0].count === 0;
       console.log("Needs reinitialization:", needsReinit);
-      console.log("Needs admin password update:", needsAdminPasswordUpdate);
-      
-      // If admin exists but has wrong password, just update the password
-      if (needsAdminPasswordUpdate) {
-        const adminHash = await bcrypt.hash('admin123', 12);
-        console.log("Updating admin password with fresh hash");
-        await db.update(users)
-          .set({ password: adminHash })
-          .where(eq(users.email, "admin@kantamanto.com"));
-        console.log("Admin password updated successfully");
-        return;
-      }
       
       if (needsReinit) {
-      // Insert seed data - Generate fresh hash for admin user
-      const adminHash = await bcrypt.hash('admin123', 12);
-      console.log("Generated fresh admin hash:", adminHash);
+      // Only create admin user if credentials are provided via environment variables
+      const adminEmail = process.env.ADMIN_EMAIL;
+      const adminPassword = process.env.ADMIN_PASSWORD;
+      const adminUsername = process.env.ADMIN_USERNAME || "admin";
       
-      const seedUsers = [
-        {
-          username: "admin",
-          email: "admin@kantamanto.com",
-          password: adminHash, // Fresh hash for admin123
+      const seedUsers = [];
+      
+      // Create admin user only if credentials are provided
+      if (adminEmail && adminPassword) {
+        const adminHash = await bcrypt.hash(adminPassword, 12);
+        console.log("Creating admin user with provided credentials");
+        seedUsers.push({
+          username: adminUsername,
+          email: adminEmail,
+          password: adminHash,
           firstName: "Admin",
           lastName: "User",
           phone: "+233123456789",
           role: "admin"
-        },
+        });
+      } else {
+        console.log("⚠️  No admin credentials provided via environment variables. Skipping admin user creation.");
+        console.log("⚠️  Set ADMIN_EMAIL and ADMIN_PASSWORD environment variables to create an admin user.");
+      }
+      
+      // Add sample users for development/testing
+      seedUsers.push(
         {
           username: "amas_closet",
           email: "ama@kantamanto.com",
@@ -213,7 +208,7 @@ export class DatabaseStorage implements IStorage {
           phone: "+233201234567",
           role: "buyer"
         }
-      ];
+      );
 
       const insertedUsers = await db.insert(users).values(seedUsers).returning();
       const sellers = insertedUsers.filter(u => u.role === "seller");

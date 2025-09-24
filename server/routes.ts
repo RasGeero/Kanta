@@ -123,8 +123,10 @@ function requireRole(role: string) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Initialize seed data if database is empty
-  await storage.initializeSeedDataIfEmpty();
+  // Initialize seed data only in development mode
+  if (process.env.NODE_ENV === 'development' && process.env.ENABLE_SEEDING !== 'false') {
+    await storage.initializeSeedDataIfEmpty();
+  }
 
   // Authentication routes
   app.post("/api/auth/register", async (req, res) => {
