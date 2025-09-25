@@ -233,16 +233,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Account is deactivated" });
       }
 
-      // Temporary debugging for password hash
-      console.log("Debug - Email:", email);
-      console.log("Debug - Hash length:", user.password?.length);
-      console.log("Debug - Hash starts with $2b$12$:", user.password?.startsWith("$2b$12$"));
-      console.log("Debug - Hash first 10 chars:", user.password?.substring(0, 10));
-      console.log("Debug - Hash last 10 chars:", user.password?.substring(-10));
-      
       // Verify password
       const isValidPassword = await bcrypt.compare(password, user.password);
-      console.log("Debug - Password comparison result:", isValidPassword);
       
       if (!isValidPassword) {
         return res.status(401).json({ message: "Invalid credentials" });

@@ -154,30 +154,29 @@ export class DatabaseStorage implements IStorage {
       console.log("Needs reinitialization:", needsReinit);
       
       if (needsReinit) {
-      // Only create admin user if credentials are provided via environment variables
-      const adminEmail = process.env.ADMIN_EMAIL;
-      const adminPassword = process.env.ADMIN_PASSWORD;
+      // Create default admin user - can be overridden with environment variables
+      const adminEmail = process.env.ADMIN_EMAIL || "admin@kantamanto.com";
+      const adminPassword = process.env.ADMIN_PASSWORD || "admin123";
       const adminUsername = process.env.ADMIN_USERNAME || "admin";
       
       const seedUsers = [];
       
-      // Create admin user only if credentials are provided
-      if (adminEmail && adminPassword) {
-        const adminHash = await bcrypt.hash(adminPassword, 12);
-        console.log("Creating admin user with provided credentials");
-        seedUsers.push({
-          username: adminUsername,
-          email: adminEmail,
-          password: adminHash,
-          firstName: "Admin",
-          lastName: "User",
-          phone: "+233123456789",
-          role: "admin"
-        });
-      } else {
-        console.log("⚠️  No admin credentials provided via environment variables. Skipping admin user creation.");
-        console.log("⚠️  Set ADMIN_EMAIL and ADMIN_PASSWORD environment variables to create an admin user.");
+      // Always create admin user with default or provided credentials
+      const adminHash = await bcrypt.hash(adminPassword, 12);
+      console.log("Creating admin user with email:", adminEmail);
+      if (!process.env.ADMIN_EMAIL || !process.env.ADMIN_PASSWORD) {
+        console.log("⚠️  Using default admin credentials. CHANGE PASSWORD AFTER FIRST LOGIN for security!");
+        console.log("⚠️  Set ADMIN_EMAIL and ADMIN_PASSWORD environment variables to override defaults.");
       }
+      seedUsers.push({
+        username: adminUsername,
+        email: adminEmail,
+        password: adminHash,
+        firstName: "Admin",
+        lastName: "User",
+        phone: "+233123456789",
+        role: "admin"
+      });
       
       // Add sample users for development/testing
       seedUsers.push(
