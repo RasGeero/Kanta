@@ -80,7 +80,7 @@ export const aiProcessing = {
       });
       
       // Check if Fashn.ai API key is available
-      const response = await fetch('/api/ai/mannequin-overlay', {
+      const response = await fetch('/api/ai/model-overlay', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -88,7 +88,7 @@ export const aiProcessing = {
         body: JSON.stringify({
           imageUrl: backgroundRemovedImageUrl,
           garmentType,
-          mannequinGender,
+          modelGender: mannequinGender,
           fashionModel: fashionModel ? {
             id: fashionModel.id,
             name: fashionModel.name,
