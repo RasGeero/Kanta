@@ -65,17 +65,17 @@ export const aiProcessing = {
     }
   },
 
-  // Apply mannequin overlay using Fashn.ai
-  applyMannequinOverlay: async (
+  // Apply model overlay using Fashn.ai
+  applyModelOverlay: async (
     backgroundRemovedImageUrl: string,
-    garmentType: 'dress' | 'shirt' | 'pants' | 'jacket' | 'other' = 'other',
-    mannequinGender: 'male' | 'female' | 'unisex' = 'unisex',
+    garmentType: 'tops' | 'bottoms' | 'one-pieces' | 'auto' = 'auto',
+    modelGender: 'male' | 'female' | 'unisex' = 'unisex',
     fashionModel?: FashionModel | null
   ): Promise<AIProcessingResult> => {
     try {
-      console.log('Processing mannequin overlay with Fashn.ai API...', {
+      console.log('Processing model overlay with Fashn.ai API...', {
         garmentType,
-        mannequinGender,
+        modelGender,
         fashionModel: fashionModel ? `${fashionModel.name} (${fashionModel.id})` : 'none',
       });
       
@@ -88,7 +88,7 @@ export const aiProcessing = {
         body: JSON.stringify({
           imageUrl: backgroundRemovedImageUrl,
           garmentType,
-          modelGender: mannequinGender,
+          modelGender,
           fashionModel: fashionModel ? {
             id: fashionModel.id,
             name: fashionModel.name,
@@ -115,9 +115,9 @@ export const aiProcessing = {
 
       const result = await response.json();
       
-      // Always treat mannequin overlay as optional - if it fails, return background-removed image
+      // Always treat model overlay as optional - if it fails, return background-removed image
       if (!response.ok || !result.success) {
-        console.warn('Mannequin overlay failed:', result.message);
+        console.warn('Model overlay failed:', result.message);
         return {
           success: true,
           processedImageUrl: backgroundRemovedImageUrl,
@@ -133,7 +133,7 @@ export const aiProcessing = {
         message: 'Virtual try-on completed successfully',
       };
     } catch (error) {
-      console.warn('Mannequin overlay processing error:', error);
+      console.warn('Model overlay processing error:', error);
       
       // Return background-removed image as fallback
       return {
@@ -162,22 +162,22 @@ export const aiProcessing = {
         return backgroundRemovalResult;
       }
       
-      // Step 2: Apply mannequin overlay
+      // Step 2: Apply model overlay
       const garmentType = mapCategoryToGarmentType(productCategory);
-      const mannequinGender = mapGenderToMannequinType(productGender);
+      const modelGender = mapGenderToModelType(productGender);
       
-      const mannequinResult = await aiProcessing.applyMannequinOverlay(
+      const modelResult = await aiProcessing.applyModelOverlay(
         backgroundRemovalResult.processedImageUrl,
         garmentType,
-        mannequinGender,
+        modelGender,
         fashionModel
       );
       
       return {
-        success: mannequinResult.success,
-        processedImageUrl: mannequinResult.processedImageUrl || backgroundRemovalResult.processedImageUrl,
+        success: modelResult.success,
+        processedImageUrl: modelResult.processedImageUrl || backgroundRemovalResult.processedImageUrl,
         originalImageUrl: URL.createObjectURL(imageFile),
-        message: mannequinResult.success 
+        message: modelResult.success 
           ? 'AI processing completed successfully'
           : 'AI processing partially completed. Using background-removed image.',
       };
@@ -223,18 +223,17 @@ export const aiProcessing = {
 };
 
 // Helper functions
-function mapCategoryToGarmentType(category: string): 'dress' | 'shirt' | 'pants' | 'jacket' | 'other' {
+function mapCategoryToGarmentType(category: string): 'tops' | 'bottoms' | 'one-pieces' | 'auto' {
   const categoryLower = category.toLowerCase();
   
-  if (categoryLower.includes('dress')) return 'dress';
-  if (categoryLower.includes('shirt') || categoryLower.includes('top')) return 'shirt';
-  if (categoryLower.includes('pants') || categoryLower.includes('trouser')) return 'pants';
-  if (categoryLower.includes('jacket') || categoryLower.includes('coat')) return 'jacket';
+  if (categoryLower.includes('dress') || categoryLower.includes('jumpsuit') || categoryLower.includes('romper')) return 'one-pieces';
+  if (categoryLower.includes('shirt') || categoryLower.includes('top') || categoryLower.includes('blouse') || categoryLower.includes('t-shirt') || categoryLower.includes('tank') || categoryLower.includes('sweater') || categoryLower.includes('hoodie') || categoryLower.includes('jacket') || categoryLower.includes('coat') || categoryLower.includes('blazer')) return 'tops';
+  if (categoryLower.includes('pants') || categoryLower.includes('trouser') || categoryLower.includes('jeans') || categoryLower.includes('shorts') || categoryLower.includes('skirt') || categoryLower.includes('legging')) return 'bottoms';
   
-  return 'other';
+  return 'auto';
 }
 
-function mapGenderToMannequinType(gender: string): 'male' | 'female' | 'unisex' {
+function mapGenderToModelType(gender: string): 'male' | 'female' | 'unisex' {
   const genderLower = gender.toLowerCase();
   
   if (genderLower.includes('men') || genderLower === 'male') return 'male';

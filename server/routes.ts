@@ -1417,7 +1417,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           inputs: {
             model_image: modelImageUrl,
             garment_image: imageUrl,
-            category: garmentType || "other"
+            category: garmentType || "auto"
           }
         };
         
