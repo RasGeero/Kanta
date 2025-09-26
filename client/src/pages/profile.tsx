@@ -548,10 +548,7 @@ export default function Profile() {
 
         <TabsContent value="orders">
           <Card>
-            <CardHeader>
-              <CardTitle>Order History</CardTitle>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               {isLoadingOrders ? (
                 <div className="space-y-4">
                   {[...Array(3)].map((_, i) => (
@@ -614,10 +611,7 @@ export default function Profile() {
 
         <TabsContent value="wishlist">
           <Card>
-            <CardHeader>
-              <CardTitle>Wishlist</CardTitle>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               {isLoadingWishlist ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {[...Array(4)].map((_, i) => (
