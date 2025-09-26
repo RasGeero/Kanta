@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Users, Store, Package, Flag, DollarSign, CheckCircle, XCircle, User, Plus, Edit, Upload, ImageIcon } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,7 @@ export default function AdminDashboard() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
 
   // Fetch admin data
   const { data: users = [], isLoading: isLoadingUsers } = useQuery({
@@ -463,7 +465,7 @@ export default function AdminDashboard() {
       {/* Management Tabs */}
       <Tabs defaultValue="products" className="space-y-6">
         <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="products" data-testid="tab-products">Product Reviews</TabsTrigger>
+          <TabsTrigger value="products" data-testid="tab-products">{isMobile ? "Reviews" : "Product Reviews"}</TabsTrigger>
           <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
           <TabsTrigger value="orders" data-testid="tab-orders">Orders</TabsTrigger>
           <TabsTrigger value="reports" data-testid="tab-reports">Reports</TabsTrigger>
