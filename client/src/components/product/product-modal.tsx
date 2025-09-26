@@ -77,14 +77,14 @@ export default function ProductModal({
             </div>
             
             {/* Thumbnail Images */}
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-6 gap-1">
               {images.slice(0, 4).map((image, index) => (
                 <img 
                   key={index}
                   src={image} 
                   alt={`Product view ${index + 1}`}
-                  className={`w-full aspect-[2/3] object-cover rounded-lg cursor-pointer transition-opacity ${
-                    index === currentImageIndex ? 'opacity-100 ring-2 ring-primary' : 'opacity-60 hover:opacity-100'
+                  className={`w-full aspect-[2/3] object-cover rounded-md cursor-pointer transition-opacity ${
+                    index === currentImageIndex ? 'opacity-100 ring-1 ring-primary' : 'opacity-60 hover:opacity-100'
                   }`}
                   onClick={() => setCurrentImageIndex(index)}
                   data-testid={`product-modal-thumbnail-${product.id}-${index}`}
