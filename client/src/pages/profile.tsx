@@ -567,7 +567,7 @@ export default function Profile() {
                       <img 
                         src={order.product.processedImage || order.product.originalImage || ''} 
                         alt={order.product.title}
-                        className="w-16 h-16 object-cover rounded-lg"
+                        className="w-16 aspect-[2/3] object-cover rounded-lg"
                       />
                       <div className="flex-1">
                         <h4 className="font-medium text-card-foreground">{order.product.title}</h4>
@@ -626,7 +626,7 @@ export default function Profile() {
                         <img 
                           src={product.processedImage || product.originalImage || ''} 
                           alt={product.title}
-                          className="w-full h-48 object-cover"
+                          className="w-full aspect-[2/3] object-cover"
                         />
                         <Button
                           size="icon"

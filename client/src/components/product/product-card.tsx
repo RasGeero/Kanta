@@ -47,7 +47,7 @@ export default function ProductCard({
         <img 
           src={product.processedImage || product.originalImage || ''} 
           alt={product.title}
-          className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
+          className="w-full aspect-[2/3] object-cover group-hover:scale-105 transition-transform duration-300"
           data-testid={`product-image-${product.id}`}
         />
         {product.processedImage && product.processedImage !== product.originalImage && (

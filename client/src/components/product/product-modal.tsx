@@ -64,7 +64,7 @@ export default function ProductModal({
               <img 
                 src={images[currentImageIndex]} 
                 alt={product.title}
-                className="w-full h-96 object-cover rounded-lg"
+                className="w-full aspect-[2/3] object-cover rounded-lg"
                 data-testid={`product-modal-main-image-${product.id}`}
               />
               {product.processedImage && product.processedImage !== product.originalImage && (
@@ -83,7 +83,7 @@ export default function ProductModal({
                   key={index}
                   src={image} 
                   alt={`Product view ${index + 1}`}
-                  className={`w-full h-20 object-cover rounded-lg cursor-pointer transition-opacity ${
+                  className={`w-full aspect-[2/3] object-cover rounded-lg cursor-pointer transition-opacity ${
                     index === currentImageIndex ? 'opacity-100 ring-2 ring-primary' : 'opacity-60 hover:opacity-100'
                   }`}
                   onClick={() => setCurrentImageIndex(index)}

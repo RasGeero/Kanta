@@ -891,7 +891,7 @@ export default function AdminDashboard() {
                     data-testid="mannequin-image-input"
                   />
                   {imagePreview && (
-                    <div className="w-32 h-48 border rounded-lg overflow-hidden">
+                    <div className="w-32 aspect-[2/3] border rounded-lg overflow-hidden">
                       <img 
                         src={imagePreview} 
                         alt="Preview" 

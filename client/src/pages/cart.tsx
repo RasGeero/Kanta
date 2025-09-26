@@ -224,7 +224,7 @@ export default function Cart() {
                         <img 
                           src={item.product.originalImage || 'https://images.unsplash.com/photo-1596783074918-c84cb06531ca'} 
                           alt={item.product.title}
-                          className="w-20 h-20 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                          className="w-20 aspect-[2/3] object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
                           data-testid={`cart-item-image-${item.id}`}
                         />
                       </Link>

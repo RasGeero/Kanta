@@ -832,7 +832,7 @@ export default function SellerDashboard() {
                   <img 
                     src={product.processedImage ?? product.originalImage ?? undefined} 
                     alt={product.title}
-                    className="w-16 h-16 object-cover rounded-lg"
+                    className="w-16 aspect-[2/3] object-cover rounded-lg"
                   />
                   <div className="flex-1">
                     <h4 className="font-medium text-card-foreground">{product.title}</h4>
