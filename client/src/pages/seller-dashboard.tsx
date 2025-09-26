@@ -69,11 +69,8 @@ export default function SellerDashboard() {
         try {
           const data = JSON.parse(aiStudioData);
           
-          // Pre-fill the form with AI Studio data
-          form.setValue('title', data.title || '');
-          form.setValue('description', data.description || '');
-          form.setValue('category', data.category || '');
-          form.setValue('condition', data.condition || '');
+          // Don't pre-fill form data - let users enter their own information
+          // Only set the image preview to show the AI-generated result
           
           // Set the image preview from AI Studio
           if (data.generatedImage) {
@@ -193,6 +190,56 @@ export default function SellerDashboard() {
 
   const onSubmit = (data: ProductFormData) => {
     createProductMutation.mutate(data);
+  };
+
+  // Delete product mutation
+  const deleteProductMutation = useMutation({
+    mutationFn: (productId: string) => productApi.deleteProduct(productId),
+    onSuccess: () => {
+      toast({
+        title: "Product deleted",
+        description: "Your product has been deleted successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/sellers', sellerId, 'products'] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to delete product. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEditProduct = (product: any) => {
+    // Pre-fill form with existing product data for editing
+    form.setValue('title', product.title);
+    form.setValue('description', product.description || '');
+    form.setValue('category', product.category);
+    form.setValue('size', product.size || '');
+    form.setValue('color', product.color || '');
+    form.setValue('gender', product.gender || '');
+    form.setValue('condition', product.condition);
+    form.setValue('price', product.price.toString());
+    
+    // Set image preview if available
+    if (product.processedImage || product.originalImage) {
+      setImagePreview(product.processedImage || product.originalImage);
+    }
+    
+    // Open the product form
+    setIsAddProductOpen(true);
+    
+    toast({
+      title: "Editing Product",
+      description: "You can now edit your product details.",
+    });
+  };
+
+  const handleDeleteProduct = (productId: string) => {
+    if (window.confirm('Are you sure you want to delete this product? This action cannot be undone.')) {
+      deleteProductMutation.mutate(productId);
+    }
   };
 
   // Calculate stats
@@ -846,8 +893,26 @@ export default function SellerDashboard() {
                       </Badge>
                     </div>
                   </div>
-                  <div className="text-right">
+                  <div className="text-right space-y-2">
                     <p className="text-sm text-muted-foreground">{product.views} views</p>
+                    <div className="flex space-x-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline"
+                        onClick={() => handleEditProduct(product)}
+                        data-testid={`edit-product-${product.id}`}
+                      >
+                        Edit
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="destructive"
+                        onClick={() => handleDeleteProduct(product.id)}
+                        data-testid={`delete-product-${product.id}`}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}

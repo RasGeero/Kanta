@@ -238,6 +238,15 @@ export default function Profile() {
     removeFromWishlistMutation.mutate(productId);
   };
 
+  const handleViewOrderDetails = (order: any) => {
+    // For now, show order details in a toast
+    // In a full implementation, this would open a modal with detailed order information
+    toast({
+      title: `Order #${order.id.slice(0, 8)}`,
+      description: `${order.product.title} - ${order.status} - ₵${parseFloat(order.totalAmount).toFixed(0)}`,
+    });
+  };
+
   const onPasswordSubmit = (data: PasswordFormData) => {
     changePasswordMutation.mutate(data);
   };
@@ -585,7 +594,13 @@ export default function Profile() {
                         <p className="text-sm text-muted-foreground">
                           {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A'}
                         </p>
-                        <Button variant="outline" size="sm" className="mt-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="mt-2"
+                          onClick={() => handleViewOrderDetails(order)}
+                          data-testid={`view-order-details-${order.id}`}
+                        >
                           View Details
                         </Button>
                       </div>

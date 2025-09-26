@@ -199,20 +199,7 @@ export default function AIStudio() {
         
         setAiResult(aiResult);
         
-        // Create a draft product in the database
-        const formData = new FormData();
-        formData.append('image', garmentImage);
-        formData.append('title', aiResult.productTitle);
-        formData.append('description', aiResult.suggestedDescription);
-        formData.append('category', aiResult.suggestedCategory);
-        formData.append('condition', 'excellent');
-        formData.append('price', '0'); // Placeholder price
-        formData.append('sellerId', sellerId);
-        formData.append('status', 'draft');
-        formData.append('gender', genderPreference);
-        
-        // Create the product
-        createProductMutation.mutate(formData);
+        // Don't automatically create products - let users control when to create listings
         
         toast({
           title: "AI Processing Complete",
@@ -276,20 +263,28 @@ export default function AIStudio() {
     reader.readAsDataURL(garmentImage);
   };
 
-  const handleDownloadResult = () => {
+  const handleSaveToGallery = () => {
     if (!aiResult) return;
     
-    // Create a download link for the generated image
-    const link = document.createElement('a');
-    link.href = aiResult.generatedImage;
-    link.download = `ai-studio-result-${Date.now()}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // For now, we'll save to gallery using localStorage as a temporary solution
+    // In production, this would be saved to the database via API
+    const existingGallery = JSON.parse(localStorage.getItem('sellerGallery') || '[]');
+    const galleryItem = {
+      id: `gallery-${Date.now()}`,
+      imageUrl: aiResult.generatedImage,
+      title: aiResult.productTitle,
+      category: aiResult.suggestedCategory,
+      description: aiResult.suggestedDescription,
+      createdAt: new Date().toISOString(),
+      sellerId: sellerId
+    };
+    
+    existingGallery.unshift(galleryItem);
+    localStorage.setItem('sellerGallery', JSON.stringify(existingGallery));
     
     toast({
-      title: "Download Started",
-      description: "Your AI-generated image is downloading.",
+      title: "Saved to Gallery",
+      description: "Your AI-generated image has been saved to your gallery.",
     });
   };
 
@@ -487,13 +482,13 @@ export default function AIStudio() {
                 <div className="space-y-2">
                   <div className="grid grid-cols-2 gap-2">
                     <Button 
-                      onClick={handleDownloadResult}
+                      onClick={handleSaveToGallery}
                       variant="outline" 
                       size="sm"
-                      data-testid="download-result"
+                      data-testid="save-to-gallery"
                     >
-                      <Download className="h-4 w-4 mr-1" />
-                      Download
+                      <Save className="h-4 w-4 mr-1" />
+                      Save to Gallery
                     </Button>
                     
                     <Button 
@@ -513,7 +508,7 @@ export default function AIStudio() {
                     data-testid="save-to-draft"
                   >
                     <Save className="h-4 w-4 mr-2" />
-                    Complete Details
+                    Continue Listing →
                   </Button>
                 </div>
               </div>

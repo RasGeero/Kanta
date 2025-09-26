@@ -33,7 +33,7 @@ export default function ProductModal({
   if (!product) return null;
 
   // Product has a specific size, no need for selection in thrift marketplace
-  const images = [product.processedImage || product.originalImage, ...(product.images || [])];
+  const images = [product.processedImage || product.originalImage || '', ...(product.images || [])].filter(Boolean);
 
   const handleAddToCart = () => {
     onAddToCart?.(product.id, product.size || undefined);
