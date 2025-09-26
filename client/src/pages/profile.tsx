@@ -634,7 +634,7 @@ export default function Profile() {
                   <p className="text-muted-foreground">No items in your wishlist yet. Heart some products to save them here!</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                   {wishlist.map((product) => (
                     <Card key={product.id} className="overflow-hidden group">
                       <div className="relative">
@@ -646,19 +646,19 @@ export default function Profile() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="absolute top-2 right-2 bg-white/80 hover:bg-white"
+                          className="absolute top-1 right-1 bg-white/80 hover:bg-white w-6 h-6"
                           onClick={() => handleRemoveFromWishlist(product.id)}
                           data-testid={`remove-wishlist-${product.id}`}
                         >
-                          <Heart className="h-4 w-4 text-destructive fill-destructive" />
+                          <Heart className="h-3 w-3 text-destructive fill-destructive" />
                         </Button>
                       </div>
-                      <CardContent className="p-4">
-                        <h3 className="font-medium text-sm mb-1 truncate">{product.title}</h3>
+                      <CardContent className="p-2">
+                        <h3 className="font-medium text-xs mb-1 truncate">{product.title}</h3>
                         <p className="text-xs text-muted-foreground mb-2">by {product.seller.firstName}'s Store</p>
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-primary">₵{parseFloat(product.price).toFixed(0)}</span>
-                          <Button size="sm" data-testid={`add-to-cart-wishlist-${product.id}`}>
+                        <div className="flex flex-col gap-1">
+                          <span className="font-bold text-primary text-sm">₵{parseFloat(product.price).toFixed(0)}</span>
+                          <Button size="sm" className="text-xs h-6" data-testid={`add-to-cart-wishlist-${product.id}`}>
                             Add to Cart
                           </Button>
                         </div>
