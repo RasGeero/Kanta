@@ -396,7 +396,10 @@ export default function SellerDashboard() {
 
         {/* Manual Product Creation Dialog */}
         <Dialog open={isAddProductOpen} onOpenChange={setIsAddProductOpen}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent 
+            className="max-w-2xl"
+            onInteractOutside={(e) => e.preventDefault()}
+          >
             <DialogHeader>
               <DialogTitle>Add New Product</DialogTitle>
             </DialogHeader>
@@ -585,7 +588,7 @@ export default function SellerDashboard() {
                         <img 
                           src={imagePreview} 
                           alt="Product preview" 
-                          className="w-32 h-32 object-cover rounded-lg mx-auto"
+                          className="w-32 aspect-[2/3] object-cover rounded-lg mx-auto"
                         />
                         <div className="space-y-2">
                           <p className="text-sm text-muted-foreground">
