@@ -98,7 +98,7 @@ export default function ProductModal({
             <DialogHeader>
               <div>
                 <DialogTitle 
-                  className="text-2xl mb-2"
+                  className="text-2xl mb-2 text-left"
                   data-testid={`product-modal-title-${product.id}`}
                 >
                   {product.title}

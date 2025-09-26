@@ -519,7 +519,7 @@ export default function Search() {
                       />
                       <div className="flex-1">
                         <h3 className="font-semibold text-lg">{product.title}</h3>
-                        <p className="text-muted-foreground">by {product.seller.firstName}'s Store</p>
+                        <p className="text-muted-foreground text-sm">by {product.seller.firstName}'s Store</p>
                         <div className="flex items-center space-x-2 mt-1">
                           <Badge variant="outline">{product.category}</Badge>
                           <Badge variant="outline">{product.size}</Badge>
