@@ -588,7 +588,7 @@ export default function SellerDashboard() {
                         <img 
                           src={imagePreview} 
                           alt="Product preview" 
-                          className="w-32 aspect-[2/3] object-cover rounded-lg mx-auto"
+                          className="w-24 aspect-[2/3] object-cover rounded-lg mx-auto"
                         />
                         <div className="space-y-2">
                           <p className="text-sm text-muted-foreground">
