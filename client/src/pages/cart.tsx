@@ -172,7 +172,7 @@ export default function Cart() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 max-w-7xl overflow-hidden">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Shopping Cart</h1>
@@ -219,38 +219,54 @@ export default function Cart() {
                 {cartItems.map((item, index) => (
                   <div key={item.id}>
                     {index > 0 && <Separator />}
-                    <div className="flex items-center space-x-4 py-4">
-                      <Link href={`/product/${item.productId}`}>
+                    <div className="grid grid-cols-1 sm:grid-cols-[80px_1fr_auto] gap-4 py-4">
+                      {/* Product Image */}
+                      <Link href={`/product/${item.productId}`} className="sm:row-span-2">
                         <img 
                           src={item.product.originalImage || 'https://images.unsplash.com/photo-1596783074918-c84cb06531ca'} 
                           alt={item.product.title}
-                          className="w-20 aspect-square object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                          className="w-20 aspect-square object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity mx-auto sm:mx-0"
                           data-testid={`cart-item-image-${item.id}`}
                         />
                       </Link>
                       
-                      <div className="flex-1">
-                        <Link href={`/product/${item.productId}`}>
-                          <h3 
-                            className="font-semibold text-card-foreground hover:text-primary cursor-pointer"
-                            data-testid={`cart-item-title-${item.id}`}
+                      {/* Product Info and Price Row */}
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 min-w-0">
+                        <div className="flex-1 min-w-0">
+                          <Link href={`/product/${item.productId}`}>
+                            <h3 
+                              className="font-semibold text-card-foreground hover:text-primary cursor-pointer truncate"
+                              data-testid={`cart-item-title-${item.id}`}
+                            >
+                              {item.product.title}
+                            </h3>
+                          </Link>
+                          <p className="text-sm text-muted-foreground truncate">by {item.product.seller?.username || 'Unknown Seller'}</p>
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            {item.size && (
+                              <span className="text-xs bg-muted px-2 py-1 rounded">Size: {item.size}</span>
+                            )}
+                            {item.product.color && (
+                              <span className="text-xs bg-muted px-2 py-1 rounded">{item.product.color}</span>
+                            )}
+                            <span className="text-xs bg-muted px-2 py-1 rounded capitalize">{item.product.condition}</span>
+                          </div>
+                        </div>
+                        
+                        {/* Price (shown on right on desktop, top on mobile) */}
+                        <div className="text-left sm:text-right">
+                          <p 
+                            className="font-semibold text-primary text-lg"
+                            data-testid={`item-total-${item.id}`}
                           >
-                            {item.product.title}
-                          </h3>
-                        </Link>
-                        <p className="text-sm text-muted-foreground">by {item.product.seller?.username || 'Unknown Seller'}</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                          {item.size && (
-                            <span className="text-xs bg-muted px-2 py-1 rounded">Size: {item.size}</span>
-                          )}
-                          {item.product.color && (
-                            <span className="text-xs bg-muted px-2 py-1 rounded">Color: {item.product.color}</span>
-                          )}
-                          <span className="text-xs bg-muted px-2 py-1 rounded capitalize">{item.product.condition}</span>
+                            GH₵{(parseFloat(item.product.price) * item.quantity).toFixed(0)}
+                          </p>
+                          <p className="text-sm text-muted-foreground">GH₵{parseFloat(item.product.price).toFixed(0)}/each</p>
                         </div>
                       </div>
                       
-                      <div className="flex items-center space-x-3">
+                      {/* Quantity Controls and Remove Button Row */}
+                      <div className="flex items-center justify-between sm:justify-end gap-3 col-span-full sm:col-span-1">
                         {/* Quantity Controls */}
                         <div className="flex items-center border rounded-lg">
                           <Button
@@ -259,11 +275,13 @@ export default function Cart() {
                             onClick={() => updateQuantity(item, item.quantity - 1)}
                             disabled={item.quantity <= 1}
                             data-testid={`decrease-quantity-${item.id}`}
+                            className="h-10 w-10 p-0"
+                            aria-label="Decrease quantity"
                           >
                             <Minus className="h-4 w-4" />
                           </Button>
                           <span 
-                            className="px-3 py-2 text-sm font-medium"
+                            className="px-3 py-2 text-sm font-medium min-w-[2rem] text-center"
                             data-testid={`quantity-${item.id}`}
                           >
                             {item.quantity}
@@ -273,20 +291,11 @@ export default function Cart() {
                             size="sm"
                             onClick={() => updateQuantity(item, item.quantity + 1)}
                             data-testid={`increase-quantity-${item.id}`}
+                            className="h-10 w-10 p-0"
+                            aria-label="Increase quantity"
                           >
                             <Plus className="h-4 w-4" />
                           </Button>
-                        </div>
-                        
-                        {/* Price */}
-                        <div className="text-right">
-                          <p 
-                            className="font-semibold text-primary"
-                            data-testid={`item-total-${item.id}`}
-                          >
-                            GH₵{(parseFloat(item.product.price) * item.quantity).toFixed(0)}
-                          </p>
-                          <p className="text-sm text-muted-foreground">GH₵{parseFloat(item.product.price).toFixed(0)}/each</p>
                         </div>
                         
                         {/* Remove Button */}
@@ -295,6 +304,8 @@ export default function Cart() {
                           size="sm"
                           onClick={() => removeItem(item)}
                           data-testid={`remove-item-${item.id}`}
+                          className="h-10 w-10 p-0"
+                          aria-label={`Remove ${item.product.title} from cart`}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -314,18 +325,20 @@ export default function Cart() {
                 <CardTitle>Promo Code</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex space-x-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <Input
                     placeholder="Enter promo code"
                     value={promoCode}
                     onChange={(e) => setPromoCode(e.target.value)}
                     data-testid="promo-code-input"
+                    className="flex-1"
                   />
                   <Button
                     variant="outline"
                     onClick={applyPromoCode}
                     disabled={!promoCode || isApplyingPromo}
                     data-testid="apply-promo-button"
+                    className="sm:w-auto w-full"
                   >
                     {isApplyingPromo ? "Applying..." : "Apply"}
                   </Button>
@@ -345,26 +358,26 @@ export default function Cart() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Subtotal</span>
-                    <span data-testid="cart-subtotal">GH₵{subtotal.toFixed(0)}</span>
+                    <span data-testid="cart-subtotal" className="font-medium">GH₵{subtotal.toFixed(0)}</span>
                   </div>
                   
                   {discount > 0 && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Discount ({discount}%)</span>
-                      <span className="text-accent" data-testid="cart-discount">-GH₵{discountAmount.toFixed(0)}</span>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground truncate pr-2">Discount ({discount}%)</span>
+                      <span className="text-accent font-medium shrink-0" data-testid="cart-discount">-GH₵{discountAmount.toFixed(0)}</span>
                     </div>
                   )}
                   
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between items-center text-sm">
                     <span className="text-muted-foreground">Delivery</span>
-                    <span data-testid="cart-delivery">GH₵{deliveryFee}</span>
+                    <span data-testid="cart-delivery" className="font-medium">GH₵{deliveryFee}</span>
                   </div>
                   
                   <Separator />
                   
-                  <div className="flex justify-between font-semibold text-lg">
+                  <div className="flex justify-between items-center font-semibold text-lg">
                     <span>Total</span>
                     <span className="text-primary" data-testid="cart-total">GH₵{total.toFixed(0)}</span>
                   </div>

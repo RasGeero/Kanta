@@ -1,12 +1,14 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Store, Package, Flag, DollarSign, CheckCircle, XCircle, User, Plus, Edit, Upload, ImageIcon } from "lucide-react";
+import { Users, Store, Package, Flag, DollarSign, CheckCircle, XCircle, User, Plus, Edit, Upload, ImageIcon, MoreHorizontal, Trash2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -40,6 +42,8 @@ export default function AdminDashboard() {
   const [selectedMannequin, setSelectedMannequin] = useState<FashionModel | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [mannequinToDelete, setMannequinToDelete] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
@@ -251,7 +255,16 @@ export default function AdminDashboard() {
   };
 
   const handleDeleteMannequin = (mannequinId: string) => {
-    deleteMannequinMutation.mutate(mannequinId);
+    setMannequinToDelete(mannequinId);
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteMannequin = () => {
+    if (mannequinToDelete) {
+      deleteMannequinMutation.mutate(mannequinToDelete);
+      setDeleteConfirmOpen(false);
+      setMannequinToDelete(null);
+    }
   };
 
   const handleCreateMannequin = () => {
@@ -762,55 +775,61 @@ export default function AdminDashboard() {
                         alt={mannequin.name}
                         className="w-16 h-16 object-cover rounded-lg"
                       />
-                      <div className="flex-1">
-                        <h4 className="font-medium text-card-foreground">{mannequin.name}</h4>
-                        <p className="text-sm text-muted-foreground">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-card-foreground truncate">{mannequin.name}</h4>
+                        <p className="text-sm text-muted-foreground truncate">
                           {mannequin.gender} • {mannequin.bodyType} • {mannequin.ethnicity}
                         </p>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <Badge variant={mannequin.category === 'formal' ? 'default' : 'secondary'}>
-                            {mannequin.category}
-                          </Badge>
-                          <Badge variant={mannequin.isActive ? 'default' : 'destructive'}>
-                            {mannequin.isActive ? 'Active' : 'Inactive'}
-                          </Badge>
-                          {mannequin.tags && mannequin.tags.length > 0 && (
-                            <span className="text-xs text-muted-foreground">
-                              {mannequin.tags.slice(0, 2).join(', ')}
-                            </span>
-                          )}
-                        </div>
                       </div>
-                      <div className="flex space-x-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => handleEditMannequin(mannequin)}
-                          data-testid={`edit-mannequin-${mannequin.id}`}
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Edit
-                        </Button>
-                        <Button 
-                          size="sm"
-                          variant={mannequin.isActive ? "outline" : "default"}
-                          onClick={() => handleToggleMannequin(mannequin.id, !mannequin.isActive)}
-                          disabled={toggleMannequinMutation.isPending}
-                          data-testid={`toggle-mannequin-${mannequin.id}`}
-                        >
-                          {mannequin.isActive ? 'Deactivate' : 'Activate'}
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="destructive"
-                          onClick={() => handleDeleteMannequin(mannequin.id)}
-                          disabled={deleteMannequinMutation.isPending}
-                          data-testid={`delete-mannequin-${mannequin.id}`}
-                        >
-                          <XCircle className="h-4 w-4 mr-1" />
-                          Delete
-                        </Button>
-                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            className="h-10 w-10 p-0"
+                            data-testid={`manage-mannequin-${mannequin.id}`}
+                            aria-label={`Manage ${mannequin.name}`}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-[160px]">
+                          <DropdownMenuItem 
+                            onClick={() => handleEditMannequin(mannequin)}
+                            data-testid={`edit-mannequin-${mannequin.id}`}
+                          >
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleToggleMannequin(mannequin.id, !mannequin.isActive)}
+                            disabled={toggleMannequinMutation.isPending}
+                            data-testid={`toggle-mannequin-${mannequin.id}`}
+                          >
+                            {mannequin.isActive ? (
+                              <>
+                                <XCircle className="h-4 w-4 mr-2" />
+                                Deactivate
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Activate
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => handleDeleteMannequin(mannequin.id)}
+                            disabled={deleteMannequinMutation.isPending}
+                            className="text-destructive focus:text-destructive"
+                            data-testid={`delete-mannequin-${mannequin.id}`}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   ))}
                 </div>
@@ -1197,6 +1216,29 @@ export default function AdminDashboard() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the model.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteConfirmOpen(false)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDeleteMannequin}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
