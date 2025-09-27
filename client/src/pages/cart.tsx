@@ -215,6 +215,7 @@ export default function Cart() {
                   Clear Cart
                 </Button>
               </CardHeader>
+              <Separator />
               <CardContent className="space-y-4">
                 {cartItems.map((item, index) => (
                   <div key={item.id}>
