@@ -80,3 +80,20 @@ Preferred communication style: Simple, everyday language.
 - **TypeScript** for type safety across the entire stack
 - **ESBuild** for production bundling
 - **Drizzle Kit** for database migrations and schema management
+
+# Documentation
+
+For comprehensive technical documentation, see `docs/technical-context.md` which includes:
+- Complete project architecture and folder structure
+- Database schema and API endpoint reference
+- AI integration details (Remove.bg, Fashn.ai, Cloudinary)
+- Environment variable configuration
+- Code quality guidelines and patterns
+- Current feature completion status
+
+# Recent Updates
+
+**November 29, 2025:**
+- Created comprehensive Technical Context Document (`docs/technical-context.md`)
+- Documented all core features, AI integrations, and architecture patterns
+- Added complete API endpoint reference and database schema
